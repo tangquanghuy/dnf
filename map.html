@@ -755,17 +755,17 @@ body::after {
 
 <!-- ============ TITLE ============ -->
 <div id="map-title" style="
-  position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:50;
-  font-family:'Cinzel',serif; font-size:22px; font-weight:600;
-  color:#c8b88a; letter-spacing:3px;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 20px rgba(200,184,138,0.2), 0 0 40px rgba(200,184,138,0.1);
+  position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:55;
+  font-family:'Cinzel',serif; font-size:14px; font-weight:600;
+  color:#c8b88a; letter-spacing:2px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
   pointer-events:none; white-space:nowrap;
-  background: linear-gradient(180deg, rgba(15,20,28,0.5) 0%, rgba(15,20,28,0.3) 100%);
-  padding: 6px 20px; border-radius: 6px; border-bottom: 1px solid rgba(200,184,138,0.15);
+  background: linear-gradient(180deg, rgba(15,20,28,0.7) 0%, rgba(15,20,28,0.5) 100%);
+  padding: 4px 14px; border-radius: 6px; border-bottom: 1px solid rgba(200,184,138,0.15);
 "></div>
 
 <!-- ============ EDIT TOOLBAR ============ -->
-<div class="edit-toolbar" id="edit-toolbar">
+<div class="edit-toolbar" id="edit-toolbar" style="display:none;">
   <button class="edit-btn" id="btn-edit-mode" onclick="toggleEditMode()">✏️ 编辑模式</button>
   <button class="edit-btn danger" id="btn-delete-edge" onclick="toggleDeleteEdge()" style="display:none;">🗑️ 删除连线</button>
   <button class="edit-btn" id="btn-export" onclick="exportData()" style="display:none;">💾 导出数据</button>
@@ -822,26 +822,26 @@ body::after {
 
 <!-- ============ LAYER SWITCHER ============ -->
 <div id="layer-switcher" style="
-  position:fixed; top:56px; left:50%; transform:translateX(-50%); z-index:55;
-  display:flex; gap:4px; background:rgba(15,20,28,0.85); border:1px solid rgba(200,184,138,0.2);
-  border-radius:8px; padding:4px; backdrop-filter:blur(6px);
+  position:fixed; top:36px; left:50%; transform:translateX(-50%); z-index:55;
+  display:flex; gap:2px; background:rgba(15,20,28,0.8); border:1px solid rgba(200,184,138,0.15);
+  border-radius:6px; padding:2px; backdrop-filter:blur(6px);
   font-family:'Noto Serif SC',serif;
 ">
   <button class="layer-btn active" data-layer="0" onclick="switchLayer(0)" style="
-    padding:5px 14px; border-radius:5px; font-size:12px; cursor:pointer;
+    padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer;
     font-family:'Noto Serif SC',serif; border:1px solid transparent;
     background:rgba(200,168,80,0.25); color:#f0e4c4; transition:all 0.2s;
-  ">第一层 · 表层界</button>
+  ">1·表层</button>
   <button class="layer-btn" data-layer="1" onclick="switchLayer(1)" style="
-    padding:5px 14px; border-radius:5px; font-size:12px; cursor:pointer;
+    padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer;
     font-family:'Noto Serif SC',serif; border:1px solid transparent;
     background:transparent; color:#8a8a7a; transition:all 0.2s;
-  ">第二层 · 中层界</button>
+  ">2·中层</button>
   <button class="layer-btn" data-layer="2" onclick="switchLayer(2)" style="
-    padding:5px 14px; border-radius:5px; font-size:12px; cursor:pointer;
+    padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer;
     font-family:'Noto Serif SC',serif; border:1px solid transparent;
     background:transparent; color:#8a8a7a; transition:all 0.2s;
-  ">第三层 · 深层界</button>
+  ">3·深层</button>
 </div>
 
 <!-- ============ DATA ============ -->
