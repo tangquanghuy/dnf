@@ -292,51 +292,45 @@ body::after {
 }
 
 /* ============ PLAYER LOCATION MARKER ============ */
-.player-marker {
-  position: absolute; pointer-events: none; z-index: 10;
-  width: 0; height: 0;
+/* 玩家当前位置标记 - 与入口标记同结构 */
+.special-marker-player {
+  position: absolute; pointer-events: none; z-index: -1;
 }
-.player-marker-ping {
-  position: absolute; top: 50%; left: 50%;
-  width: 28px; height: 28px; transform: translate(-50%, -50%);
+.special-marker-player::before {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 90px; height: 90px; transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0,220,130,0.7) 0%, rgba(0,220,130,0.15) 60%, transparent 75%);
-  animation: player-ping 2s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(0,220,130,0.4) 0%, rgba(0,220,130,0.1) 50%, transparent 70%);
+  animation: pulse-player 2.5s ease-in-out infinite;
 }
-.player-marker-ring {
-  position: absolute; top: 50%; left: 50%;
-  width: 44px; height: 44px; transform: translate(-50%, -50%);
+.special-marker-player::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 110px; height: 110px; transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 2px solid rgba(0,220,130,0.6);
-  animation: player-ring 2s ease-in-out infinite;
+  border: 2px solid rgba(0,220,130,0.5);
+  animation: ring-player 3s ease-in-out infinite;
 }
-.player-marker-dot {
-  position: absolute; top: 50%; left: 50%;
-  width: 10px; height: 10px; transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: #00dc82;
-  box-shadow: 0 0 8px rgba(0,220,130,0.8), 0 0 16px rgba(0,220,130,0.4);
-  z-index: 2;
-}
-.player-marker-label {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, 22px);
-  white-space: nowrap; font-size: 10px; font-weight: 700;
-  color: #00dc82; background: rgba(10,20,15,0.88);
-  padding: 2px 8px; border-radius: 8px;
-  border: 1px solid rgba(0,220,130,0.5);
-  letter-spacing: 0.5px; pointer-events: none;
-  text-shadow: 0 0 4px rgba(0,220,130,0.5);
-  font-family: 'Noto Serif SC', serif;
-  z-index: 2;
-}
-@keyframes player-ping {
+@keyframes pulse-player {
   0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.4); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
 }
-@keyframes player-ring {
-  0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.2); }
+@keyframes ring-player {
+  0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
+}
+.special-badge-player {
+  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  white-space: nowrap; font-size: 10px; font-weight: 700;
+  color: #00dc82; background: rgba(10,20,15,0.9);
+  padding: 2px 8px; border-radius: 10px;
+  border: 1px solid rgba(0,220,130,0.5);
+  letter-spacing: 1px; pointer-events: none;
+  text-shadow: 0 0 6px rgba(0,220,130,0.6);
+  animation: badge-glow-player 2s ease-in-out infinite alternate;
+}
+@keyframes badge-glow-player {
+  0% { box-shadow: 0 0 4px rgba(0,220,130,0.3); }
+  100% { box-shadow: 0 0 12px rgba(0,220,130,0.6); }
 }
 #layer-switcher .layer-btn:hover {
   background:rgba(200,184,138,0.15) !important;
@@ -1647,7 +1641,7 @@ function buildLegend() {
   const playerLegend = document.createElement('div');
   playerLegend.style.cssText = 'display:flex; align-items:center; gap:4px; padding:1px 0;';
   playerLegend.innerHTML = `
-    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00dc82;box-shadow:0 0 6px rgba(0,220,130,0.6);flex-shrink:0;margin:0 2px;"></span>
+    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid rgba(0,220,130,0.6);flex-shrink:0;"></span>
     <span style="font-size:11px; color:#00dc82; white-space:nowrap;">当前位置</span>
   `;
   legendItems.appendChild(playerLegend);
@@ -1932,8 +1926,7 @@ async function switchLayer(layerIdx) {
   buildLegend();
 
   // 重建玩家位置标记（因为 nodeLayer 被清空了）
-  playerMarkerEl = null;
-  createPlayerMarker();
+  lastMatchedNodeId = null;
   updatePlayerLocation();
 
   render();
@@ -1946,22 +1939,57 @@ window.switchLayer = switchLayer;
 
 let _mvuLocation = { 场所: '', 区域: '', 大陆: '' };
 
-// 玩家位置标记元素
-let playerMarkerEl = null;
+// 玩家位置标记 — 直接附加到匹配节点的 wrapper 上（同入口标记方式）
 let lastMatchedNodeId = null;
 
-function createPlayerMarker() {
-  if (playerMarkerEl) return;
-  playerMarkerEl = document.createElement('div');
-  playerMarkerEl.className = 'player-marker';
-  playerMarkerEl.innerHTML = `
-    <div class="player-marker-ring"></div>
-    <div class="player-marker-ping"></div>
-    <div class="player-marker-dot"></div>
-    <div class="player-marker-label">📍 当前位置</div>
-  `;
-  playerMarkerEl.style.display = 'none';
-  nodeLayer.appendChild(playerMarkerEl);
+function removePlayerMarker() {
+  document.querySelectorAll('.special-marker-player, .special-badge-player').forEach(el => el.remove());
+}
+
+function updatePlayerLocation() {
+  const 场所 = _mvuLocation.场所 || '';
+  const 区域 = _mvuLocation.区域 || '';
+  const 大陆 = _mvuLocation.大陆 || '';
+
+  if (!场所 && !区域 && !大陆) {
+    removePlayerMarker();
+    lastMatchedNodeId = null;
+    return;
+  }
+
+  const matchedNode = findMatchingNode(场所, 区域, 大陆);
+
+  if (!matchedNode) {
+    removePlayerMarker();
+    lastMatchedNodeId = null;
+    return;
+  }
+
+  // 如果匹配的节点没变，不需要重建
+  if (lastMatchedNodeId === matchedNode.id && document.querySelector('.special-badge-player')) return;
+
+  // 移除旧标记
+  removePlayerMarker();
+  lastMatchedNodeId = matchedNode.id;
+
+  // 找到对应的 node-wrapper
+  const wrapper = nodeLayer.querySelector(`.node-wrapper[data-id="${matchedNode.id}"]`);
+  if (!wrapper) return;
+
+  // 插入标记背景（同入口标记方式）
+  const markerBg = document.createElement('div');
+  markerBg.className = 'special-marker-player';
+  markerBg.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;';
+  const iconDiv = wrapper.querySelector('.node-icon');
+  if (iconDiv) wrapper.insertBefore(markerBg, iconDiv);
+  else wrapper.prepend(markerBg);
+
+  // 插入标签
+  const displayName = 场所 || 区域 || matchedNode.name;
+  const badge = document.createElement('div');
+  badge.className = 'special-badge-player';
+  badge.textContent = `📍 ${displayName}`;
+  wrapper.appendChild(badge);
 }
 
 function normalizeStr(s) {
@@ -2033,43 +2061,36 @@ function updatePlayerLocation() {
   const matchedNode = findMatchingNode(场所, 区域, 大陆);
 
   if (!matchedNode) {
-    if (playerMarkerEl) playerMarkerEl.style.display = 'none';
+    removePlayerMarker();
     lastMatchedNodeId = null;
     return;
   }
 
-  if (!playerMarkerEl) createPlayerMarker();
+  // 如果匹配的节点没变，不需要重建
+  if (lastMatchedNodeId === matchedNode.id && document.querySelector('.special-badge-player')) return;
 
-  // 显示位置名
-  const displayName = 场所 || 区域 || matchedNode.name;
-  const labelEl = playerMarkerEl.querySelector('.player-marker-label');
-  if (labelEl) labelEl.textContent = `📍 ${displayName}`;
-
+  // 移除旧标记
+  removePlayerMarker();
   lastMatchedNodeId = matchedNode.id;
-  playerMarkerEl.style.display = '';
 
-  // 位置更新在 render 中处理
-  updatePlayerMarkerPosition();
-}
+  // 找到对应的 node-wrapper
+  const wrapper = nodeLayer.querySelector(`.node-wrapper[data-id="${matchedNode.id}"]`);
+  if (!wrapper) return;
 
-function updatePlayerMarkerPosition() {
-  if (!playerMarkerEl || !lastMatchedNodeId) return;
-  const node = nodeMap[lastMatchedNodeId];
-  if (!node) { playerMarkerEl.style.display = 'none'; return; }
-  const pos = worldToScreen(node.x, node.y);
-  // 偏移到节点上方
-  const cfg = typeConfig[node.type] || typeConfig.poi;
-  const offset = -(cfg.size * 0.5 + 10) * Math.min(1.2, Math.max(0.5, scale));
-  playerMarkerEl.style.left = pos.x + 'px';
-  playerMarkerEl.style.top = (pos.y + offset) + 'px';
-  playerMarkerEl.style.transform = `translate(-50%, -50%) scale(${Math.min(1.3, Math.max(0.6, scale))})`;
-}
+  // 插入标记背景（同入口标记方式）
+  const markerBg = document.createElement('div');
+  markerBg.className = 'special-marker-player';
+  markerBg.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;';
+  const iconDiv = wrapper.querySelector('.node-icon');
+  if (iconDiv) wrapper.insertBefore(markerBg, iconDiv);
+  else wrapper.prepend(markerBg);
 
-// 在 requestAnimationFrame 中持续同步玩家标记位置
-let _playerPosRAF = null;
-function syncPlayerMarkerLoop() {
-  updatePlayerMarkerPosition();
-  _playerPosRAF = requestAnimationFrame(syncPlayerMarkerLoop);
+  // 插入标签
+  const displayName = 场所 || 区域 || matchedNode.name;
+  const badge = document.createElement('div');
+  badge.className = 'special-badge-player';
+  badge.textContent = `📍 ${displayName}`;
+  wrapper.appendChild(badge);
 }
 
 // 通过 postMessage 接收位置数据
@@ -2080,11 +2101,8 @@ window.addEventListener('message', (e) => {
   }
 });
 
-// 初始化标记（等待 postMessage 推送数据）
-createPlayerMarker();
-// 主动请求一次数据（通知父页面）
+// 初始化（等待 postMessage 推送数据）
 try { window.parent.postMessage({ type: 'map_ready' }, '*'); } catch (e) {}
-syncPlayerMarkerLoop();
 
 // 在 minimap 中也绘制玩家位置
 const _origRenderMinimap = renderMinimap;
