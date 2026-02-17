@@ -837,9 +837,9 @@ body::after {
     border-radius:4px; cursor:pointer; font-family:'Cinzel',serif;
     backdrop-filter:blur(4px);
   ">−</button>
-  <button onclick="resetView()" style="
+  <button onclick="resetView()" title="定位到当前位置" style="
     width:32px; height:32px; border:1px solid rgba(200,184,138,0.3);
-    background:rgba(20,28,36,0.85); color:#c8b88a; font-size:10px;
+    background:rgba(20,28,36,0.85); color:#00dc82; font-size:10px;
     border-radius:4px; cursor:pointer; font-family:'Cinzel',serif;
     backdrop-filter:blur(4px);
   ">⟲</button>
@@ -1709,7 +1709,16 @@ container.addEventListener('wheel', (e) => {
 
 function zoomIn() { scale = Math.min(3, scale * 1.2); render(); }
 function zoomOut() { scale = Math.max(0.15, scale / 1.2); render(); }
-function resetView() { viewX = 0; viewY = 0; scale = 0.95; render(); }
+function resetView() {
+  if (lastMatchedNodeId && nodeMap[lastMatchedNodeId]) {
+    const n = nodeMap[lastMatchedNodeId];
+    viewX = -n.x * SPREAD;
+    viewY = -n.y * SPREAD;
+  } else {
+    viewX = 0; viewY = 0;
+  }
+  scale = 0.95; render();
+}
 window.zoomIn = zoomIn; window.zoomOut = zoomOut; window.resetView = resetView;
 
 // ============ TOUCH SUPPORT ============
@@ -1931,21 +1940,25 @@ async function switchLayer(layerIdx) {
 }
 window.switchLayer = switchLayer;
 
-// ============ MVU 接入层 — 玩家位置标记 ============
+// ============ MVU 接入层 — 玩家位置标记 (同底部状态栏) ============
 const getCore = () => {
   try {
     const win = window.parent || window;
-    return { window: win };
+    const $ = window.jQuery || win.jQuery;
+    return { window: win, $, getDB: () => win.AutoCardUpdaterAPI || window.AutoCardUpdaterAPI };
   } catch (e) {
-    return { window: window };
+    return { window: window, $: window.jQuery, getDB: () => window.AutoCardUpdaterAPI };
   }
+};
+const getParent = () => {
+  try { return getCore().window; } catch (e) { return window; }
 };
 
 const mvuState = {
   ready: false, mvu: null,
   check: () => {
     const win = getCore().window;
-    if (typeof win.Mvu === 'undefined' || typeof win.Mvu.getMvuData !== 'function') {
+    if (typeof win.Mvu === 'undefined' || typeof win.Mvu.getMvuData !== 'function' || typeof win.Mvu.replaceMvuData !== 'function') {
       mvuState.ready = false; mvuState.mvu = null; return false;
     }
     mvuState.ready = true; mvuState.mvu = win.Mvu; return true;
@@ -1986,6 +1999,11 @@ function createPlayerMarker() {
   nodeLayer.appendChild(playerMarkerEl);
 }
 
+function normalizeStr(s) {
+  // 统一全角半角、去除空格，便于模糊匹配
+  return s.replace(/\s+/g, '').replace(/·/g, '·').replace(/\./g, '·').replace(/・/g, '·').replace(/‧/g, '·').toLowerCase();
+}
+
 function findMatchingNode(场所, 区域, 大陆) {
   // 优先精确匹配场所 → 区域 → 大陆
   const candidates = [场所, 区域, 大陆].filter(Boolean);
@@ -1994,13 +2012,35 @@ function findMatchingNode(场所, 区域, 大陆) {
     const exact = nodes.find(n => n.name === locName);
     if (exact) return exact;
   }
+  // 归一化匹配
+  for (const locName of candidates) {
+    if (!locName) continue;
+    const norm = normalizeStr(locName);
+    const match = nodes.find(n => normalizeStr(n.name) === norm);
+    if (match) return match;
+  }
   // 模糊匹配：node.name 包含位置名 或 位置名包含 node.name
   for (const locName of candidates) {
     if (!locName || locName.length < 2) continue;
-    const fuzzy = nodes.find(n =>
-      n.name.includes(locName) || locName.includes(n.name)
-    );
+    const norm = normalizeStr(locName);
+    const fuzzy = nodes.find(n => {
+      const nn = normalizeStr(n.name);
+      return nn.includes(norm) || norm.includes(nn);
+    });
     if (fuzzy) return fuzzy;
+  }
+  // 分段匹配：用 · 分割后逐段匹配
+  for (const locName of candidates) {
+    if (!locName) continue;
+    const parts = locName.split(/[·・‧.\s]+/).filter(p => p.length >= 2);
+    for (const part of parts) {
+      const normPart = normalizeStr(part);
+      const match = nodes.find(n => {
+        const nn = normalizeStr(n.name);
+        return nn.includes(normPart) || normPart.includes(nn);
+      });
+      if (match) return match;
+    }
   }
   return null;
 }
@@ -2012,6 +2052,14 @@ function updatePlayerLocation() {
   const 场所 = 位置.场所 || '';
   const 区域 = 位置.区域 || '';
   const 大陆 = 位置.大陆 || '';
+
+  if (!场所 && !区域 && !大陆) {
+    console.log('[地图] MVU 位置数据为空，data keys:', Object.keys(data));
+    if (playerMarkerEl) playerMarkerEl.style.display = 'none';
+    lastMatchedNodeId = null;
+    return;
+  }
+  console.log('[地图] MVU 位置:', { 大陆, 区域, 场所 });
 
   // 根据大陆/层级判断当前应该在哪一层地图
   // 表层界/阿拉德大陆 → layer 0, 中层界/天界 → layer 1, 深层界/魔界 → layer 2
@@ -2087,6 +2135,12 @@ createPlayerMarker();
 updatePlayerLocation();
 setInterval(updatePlayerLocation, 3000);
 syncPlayerMarkerLoop();
+
+// 监听 MVU 数据更新事件（同底部状态栏）
+try {
+  const win = getParent();
+  if (win.eventSource?.on) win.eventSource.on('mvu_data_updated', updatePlayerLocation);
+} catch (e) { }
 
 // 在 minimap 中也绘制玩家位置
 const _origRenderMinimap = renderMinimap;
