@@ -1941,17 +1941,21 @@ async function switchLayer(layerIdx) {
 window.switchLayer = switchLayer;
 
 // ============ MVU 接入层 — 玩家位置标记 (同底部状态栏) ============
+// map.html 嵌套在底部状态栏 iframe 内，需要向上查找到 SillyTavern 主窗口
 const getCore = () => {
   try {
-    const win = window.parent || window;
-    const $ = window.jQuery || win.jQuery;
-    return { window: win, $, getDB: () => win.AutoCardUpdaterAPI || window.AutoCardUpdaterAPI };
+    // 逐级向上查找包含 Mvu 的窗口
+    let win = window;
+    for (let i = 0; i < 5; i++) {
+      try {
+        if (win.Mvu && typeof win.Mvu.getMvuData === 'function') return { window: win };
+        if (win.parent && win.parent !== win) { win = win.parent; } else break;
+      } catch (e) { break; } // 跨域则停止
+    }
+    return { window: win };
   } catch (e) {
-    return { window: window, $: window.jQuery, getDB: () => window.AutoCardUpdaterAPI };
+    return { window: window };
   }
-};
-const getParent = () => {
-  try { return getCore().window; } catch (e) { return window; }
 };
 
 const mvuState = {
@@ -1959,13 +1963,11 @@ const mvuState = {
   check: () => {
     try {
       const win = getCore().window;
-      console.log('[地图] MVU check: win===window?', win === window, 'win.Mvu?', typeof win.Mvu);
-      if (typeof win.Mvu === 'undefined' || typeof win.Mvu.getMvuData !== 'function' || typeof win.Mvu.replaceMvuData !== 'function') {
+      if (typeof win.Mvu === 'undefined' || typeof win.Mvu.getMvuData !== 'function') {
         mvuState.ready = false; mvuState.mvu = null; return false;
       }
       mvuState.ready = true; mvuState.mvu = win.Mvu; return true;
     } catch (e) {
-      console.warn('[地图] MVU check error:', e);
       mvuState.ready = false; mvuState.mvu = null; return false;
     }
   }
@@ -2142,9 +2144,9 @@ updatePlayerLocation();
 setInterval(updatePlayerLocation, 3000);
 syncPlayerMarkerLoop();
 
-// 监听 MVU 数据更新事件（同底部状态栏）
+// 监听 MVU 数据更新事件
 try {
-  const win = getParent();
+  const win = getCore().window;
   if (win.eventSource?.on) win.eventSource.on('mvu_data_updated', updatePlayerLocation);
 } catch (e) { }
 
