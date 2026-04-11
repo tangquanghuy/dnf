@@ -6190,7 +6190,8 @@
                                     style="opacity:1; background:var(--accent); border-color:var(--accent);"><i
                                         class="ri-check-line"></i></div>
                                 <div class="teammate-avatar">
-                                    <img :src="currentPresetCompanion.avatar" :alt="currentPresetCompanion.name">
+                                    <img :src="getTeammateAvatarSrc(currentPresetCompanion.avatar)"
+                                        :alt="currentPresetCompanion.name" decoding="async">
                                 </div>
                                 <div class="teammate-info">
                                     <div class="teammate-name">{{ currentPresetCompanion.name }}</div>
@@ -6210,7 +6211,7 @@
                                 <div class="card-check" @click.stop="toggleTeammate(mate)"><i class="ri-check-line"></i>
                                 </div>
                                 <div class="teammate-avatar">
-                                    <img :src="mate.avatar" :alt="mate.name">
+                                    <img :src="getTeammateAvatarSrc(mate.avatar)" :alt="mate.name" decoding="async">
                                 </div>
                                 <div class="teammate-info">
                                     <div class="teammate-name">{{ mate.name }}</div>
@@ -6807,7 +6808,8 @@
             <div class="teammate-modal" :style="'margin-top:' + modalPosition.y + 'px'">
                 <button class="modal-close" @click="selectedTeammate = null"><i class="ri-close-line"></i></button>
                 <div class="modal-avatar">
-                    <img :src="selectedTeammate.avatar" :alt="selectedTeammate.name">
+                    <img :src="getTeammateAvatarSrc(selectedTeammate.avatar)" :alt="selectedTeammate.name"
+                        decoding="async">
                 </div>
                 <div class="modal-content">
                     <div class="modal-name">{{ selectedTeammate.name }}</div>
@@ -8110,6 +8112,146 @@
                     teammates: [],
                     selectedTraits: []
                 });
+
+                const TEAMMATE_IMAGE_TIMEOUT_STEPS = [12000, 18000, 26000, 36000, 50000];
+                const TEAMMATE_IMAGE_RETRY_DELAYS = [0, 1000, 2500, 5000, 9000];
+                const TEAMMATE_IMAGE_FALLBACK = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 480">
+  <rect width="360" height="480" fill="#eef1f3"/>
+  <circle cx="180" cy="145" r="64" fill="#c7d0d6"/>
+  <rect x="84" y="242" width="192" height="118" rx="24" fill="#d7dde2"/>
+  <text x="180" y="415" text-anchor="middle" fill="#74808a" font-family="Arial, sans-serif" font-size="18">Portrait unavailable</text>
+</svg>`)}`;
+                const teammateAvatarLoadMap = reactive({});
+
+                function clearTeammateAvatarTimers(entry) {
+                    if (!entry) return;
+                    if (entry.timeoutTimer) {
+                        clearTimeout(entry.timeoutTimer);
+                        entry.timeoutTimer = 0;
+                    }
+                    if (entry.retryTimer) {
+                        clearTimeout(entry.retryTimer);
+                        entry.retryTimer = 0;
+                    }
+                    if (entry.preloader) {
+                        entry.preloader.onload = null;
+                        entry.preloader.onerror = null;
+                        entry.preloader = null;
+                    }
+                }
+
+                function buildTeammateAvatarAttemptUrl(rawUrl, attempt) {
+                    if (!rawUrl) return TEAMMATE_IMAGE_FALLBACK;
+                    if (attempt <= 0) return rawUrl;
+                    const separator = rawUrl.includes('?') ? '&' : '?';
+                    return `${rawUrl}${separator}img_retry=${attempt}&img_ts=${Date.now()}`;
+                }
+
+                function ensureTeammateAvatarEntry(rawUrl) {
+                    const key = String(rawUrl || '').trim();
+                    if (!key) return null;
+                    if (!teammateAvatarLoadMap[key]) {
+                        teammateAvatarLoadMap[key] = {
+                            rawUrl: key,
+                            displaySrc: key,
+                            attempt: -1,
+                            status: 'idle',
+                            lastError: '',
+                            requestId: '',
+                            timeoutTimer: 0,
+                            retryTimer: 0,
+                            preloader: null
+                        };
+                    }
+                    return teammateAvatarLoadMap[key];
+                }
+
+                function scheduleTeammateAvatarRetry(rawUrl, nextAttempt, reason = 'error') {
+                    const entry = ensureTeammateAvatarEntry(rawUrl);
+                    if (!entry) return;
+
+                    clearTeammateAvatarTimers(entry);
+                    entry.lastError = reason;
+
+                    if (nextAttempt >= TEAMMATE_IMAGE_TIMEOUT_STEPS.length) {
+                        entry.status = 'failed';
+                        entry.displaySrc = TEAMMATE_IMAGE_FALLBACK;
+                        return;
+                    }
+
+                    entry.status = 'retrying';
+                    const delay = TEAMMATE_IMAGE_RETRY_DELAYS[Math.min(nextAttempt, TEAMMATE_IMAGE_RETRY_DELAYS.length - 1)];
+                    entry.retryTimer = setTimeout(() => {
+                        runTeammateAvatarAttempt(rawUrl, nextAttempt);
+                    }, delay);
+                }
+
+                function runTeammateAvatarAttempt(rawUrl, attempt = 0) {
+                    const entry = ensureTeammateAvatarEntry(rawUrl);
+                    if (!entry) return;
+
+                    clearTeammateAvatarTimers(entry);
+                    entry.attempt = attempt;
+                    entry.status = 'loading';
+
+                    const attemptUrl = buildTeammateAvatarAttemptUrl(entry.rawUrl, attempt);
+                    const requestId = `${Date.now()}_${attempt}_${Math.random().toString(36).slice(2)}`;
+                    entry.requestId = requestId;
+                    entry.displaySrc = attemptUrl;
+
+                    const timeoutMs = TEAMMATE_IMAGE_TIMEOUT_STEPS[Math.min(attempt, TEAMMATE_IMAGE_TIMEOUT_STEPS.length - 1)];
+                    const preloader = new Image();
+                    entry.preloader = preloader;
+
+                    let settled = false;
+                    const finish = (result) => {
+                        if (settled || entry.requestId !== requestId) return;
+                        settled = true;
+                        if (entry.timeoutTimer) {
+                            clearTimeout(entry.timeoutTimer);
+                            entry.timeoutTimer = 0;
+                        }
+                        entry.preloader = null;
+
+                        if (result === 'load') {
+                            entry.status = 'loaded';
+                            entry.lastError = '';
+                            return;
+                        }
+
+                        scheduleTeammateAvatarRetry(entry.rawUrl, attempt + 1, result);
+                    };
+
+                    preloader.onload = () => finish('load');
+                    preloader.onerror = () => finish('error');
+                    entry.timeoutTimer = setTimeout(() => finish('timeout'), timeoutMs);
+                    preloader.src = attemptUrl;
+                }
+
+                function primeTeammateAvatar(rawUrl) {
+                    const entry = ensureTeammateAvatarEntry(rawUrl);
+                    if (!entry) return TEAMMATE_IMAGE_FALLBACK;
+                    if (entry.status === 'idle') {
+                        runTeammateAvatarAttempt(entry.rawUrl, 0);
+                    }
+                    return entry.displaySrc || entry.rawUrl || TEAMMATE_IMAGE_FALLBACK;
+                }
+
+                function getTeammateAvatarSrc(rawUrl) {
+                    if (!rawUrl) return TEAMMATE_IMAGE_FALLBACK;
+                    return primeTeammateAvatar(rawUrl);
+                }
+
+                watch(currentStep, (step) => {
+                    if (step !== 4) return;
+                    mockData.teammates.forEach((mate) => {
+                        primeTeammateAvatar(mate.avatar);
+                    });
+                    if (currentPresetCompanion.value?.avatar) {
+                        primeTeammateAvatar(currentPresetCompanion.value.avatar);
+                    }
+                }, { immediate: true });
 
                 // 自定义种族数据
                 const customRace = reactive({
@@ -12871,6 +13013,7 @@ ${lockedSkillsJson}
                     handleAvatarUpload,
                     availableSkills, hasSkill, toggleSkill,
                     hasTeammate, toggleTeammate,
+                    getTeammateAvatarSrc,
                     selectedTeammate, showTeammateDetail, modalPosition,
                     // 自定义队友
                     customTeammate, enableCustomTeammate, disableCustomTeammate,
