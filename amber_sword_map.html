@@ -1404,9 +1404,12 @@
   <script>
     // ============ DATA CONFIG ============
     const pageParams = new URLSearchParams(window.location.search);
-    const MAP_MODE = pageParams.get('mode') || 'browse';
+    const EMBED_BOOTSTRAP_CONFIG = window.__AMBER_MAP_EMBED_CONFIG__ || {};
+    const embedMode = String(EMBED_BOOTSTRAP_CONFIG.mode || '').trim();
+    const embedFlag = String(EMBED_BOOTSTRAP_CONFIG.embed || '').trim().toLowerCase();
+    const MAP_MODE = pageParams.get('mode') || embedMode || 'browse';
     const IS_SPAWN_SELECT_MODE = MAP_MODE === 'spawn-select';
-    const IS_EMBED_MODE = pageParams.get('embed') === '1';
+    const IS_EMBED_MODE = pageParams.get('embed') === '1' || embedFlag === '1' || embedFlag === 'true';
 
     // 单层地图配置
     const LAYER_CONFIGS = [
