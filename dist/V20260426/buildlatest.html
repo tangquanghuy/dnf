@@ -14220,17 +14220,9 @@ if (typeof window !== 'undefined') {
 
                 const appendStarterShopEquipmentToMvu = (equipmentList, items, level) => {
                     const nextEquipment = stripStarterShopEquipment(equipmentList);
-                    const occupiedSlots = new Set(
-                        Object.values(nextEquipment || {})
-                            .filter(equip => equip && equip.装备箱 === false)
-                            .map(equip => `${equip.类型 || ''}:${equip.部位 || ''}`)
-                    );
                     const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
                     (Array.isArray(items) ? items : []).forEach((item) => {
                         if (!item) return;
-                        const slotKey = `${item.类型 || ''}:${item.部位 || ''}`;
-                        const autoEquip = !occupiedSlots.has(slotKey);
-                        if (autoEquip) occupiedSlots.add(slotKey);
                         const equipKey = buildStarterShopEquipmentKey(nextEquipment, item.名称);
                         nextEquipment[equipKey] = {
                             类型: item.类型 || '武器',
@@ -14244,7 +14236,7 @@ if (typeof window !== 'undefined') {
                             属性加成: { ...(item.属性加成 || {}) },
                             效果: item.效果 || '',
                             描述: item.描述 || '',
-                            装备箱: !autoEquip
+                            装备箱: true
                         };
                     });
                     return nextEquipment;
