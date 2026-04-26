@@ -7088,9 +7088,10 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     $panel.find('.p-stat-card.mag .p-stat-value').text(魔法减伤 + '%');
     $panel.find('.p-stat-card.mag .p-stat-sub').text(`M.DEF ${首饰防御力}`);
 
-    // ===== 暴击属性 (base + 装备加成) =====
-    const 暴击率 = Math.min(100, (战斗属性.暴击率 || 0) + (equipBonuses['暴击率'] || 0));
-    const 暴击伤害 = Math.round(((战斗属性.暴击伤害 || 1.2) + (equipBonuses['暴击伤害'] || 0)) * 100) / 100;
+    // ===== 暴击属性 =====
+    // buildEquipRecalcPatches 已将装备词条写入战斗属性，这里直接显示最终值，避免重复叠加
+    const 暴击率 = Math.min(100, parseFloat(战斗属性.暴击率) || 0);
+    const 暴击伤害 = Math.round((parseFloat(战斗属性.暴击伤害) || 1.2) * 100) / 100;
     const 暴击阈值 = 战斗属性.暴击阈值 || 10;
 
     const $critCards = $panel.find('.crit-stats-row .cs-card');
