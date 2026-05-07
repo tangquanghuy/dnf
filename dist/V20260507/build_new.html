@@ -13712,7 +13712,7 @@ if (typeof window !== 'undefined') {
                         ];
                     }
                     return [
-                        { id: 'amber_arrival', worldviewId: WORLDVIEW_AMBER_ID, name: '血与火的序章', icon: 'ri-map-pin-line', desc: '在埃鲁因王国的边陲小镇布契醒来，本应又是村里平凡的一天，直到亡灵踏来(出生点将固定为布契)', isCustom: false },
+                        { id: 'amber_arrival', worldviewId: WORLDVIEW_AMBER_ID, name: '血与火的序章', icon: 'ri-map-pin-line', desc: '在埃鲁因王国的边陲小镇布契醒来，本应又是村里平凡的一天，直到亡灵踏来(出生点已重置，并固定为布契)', isCustom: false },
                         { id: 'amber_native_story', worldviewId: WORLDVIEW_AMBER_ID, name: '命运的开端', icon: 'ri-book-open-line', desc: '基于出生地与出身背景展开一段自然剧情，作为接入沃恩德世界的冒险序章', isCustom: false },
                         { id: 'amber_custom', worldviewId: WORLDVIEW_AMBER_ID, name: '自定义开局', icon: 'ri-quill-pen-line', desc: '按琥珀之剑世界观编写你的专属序章', isCustom: true }
                     ];
@@ -13736,6 +13736,9 @@ if (typeof window !== 'undefined') {
                     const options = openingOptions.value.filter(opt => opt.worldviewId === worldviewId);
                     if (options.length === 0) return '';
                     if (options.some(opt => opt.id === openingId)) return openingId;
+                    if (worldviewId === WORLDVIEW_AMBER_ID && options.some(opt => opt.id === 'amber_native_story')) {
+                        return 'amber_native_story';
+                    }
                     return options[0].id;
                 };
                 watch([selectedWorldview, selectedOpening], ([worldviewId, openingId]) => {
