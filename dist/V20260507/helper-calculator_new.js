@@ -80,6 +80,23 @@
         '史诗': { total: 3, single: 2 },
         '神话': { total: 4, single: 3 }
     };
+    const QUALITY_CRIT_DAMAGE_LIMITS = {
+        '普通': 0.10,
+        '精良': 0.15,
+        '稀有': 0.30,
+        '神器': 0.50,
+        '传说': 0.80,
+        '史诗': 1.00,
+        '神话': 1.50
+    };
+    const QUALITY_ARMOR_CRIT_TO_SKILL_RULES = {
+        '稀有': { pick: ['基础', '进阶', '必杀'], count: 1, value: 1 },
+        '神器': { pick: ['基础', '转职', '进阶', '必杀', '奥义'], count: 1, value: 1 },
+        '传说': { pick: ['基础', '转职', '进阶', '必杀', '奥义'], count: 2, value: 1 },
+        '史诗': { fixed: { '全技能': 2 } },
+        '神话': { fixed: { '全技能': 2, '觉醒三': 1 } }
+    };
+    const CRIT_TO_SKILL_FALLBACK_TIERS = ['基础', '转职', '进阶', '必杀', '奥义'];
     const SPECIAL_EQUIP_SLOT = '特殊装备';
     const STANDARD_EQUIP_SLOTS = new Set(['主手', '副手', '护肩', '上衣', '腰带', '下装', '鞋子', '项链', '手镯', '戒指']);
     const TITAN_GRIP_TRAIT_NAME = '泰坦之握';
@@ -144,6 +161,33 @@
         if (typeof rawKey !== 'string') return '';
         const key = rawKey.trim();
         return CORE_ATTR_ALIAS[key] || key;
+    }
+
+    function stableHash(text) {
+        const seedText = String(text || '');
+        let seed = 0;
+        for (let i = 0; i < seedText.length; i++) {
+            seed = (seed * 31 + seedText.charCodeAt(i)) >>> 0;
+        }
+        return seed;
+    }
+
+    function stableRandomDecimal(seedText, max, decimals = 2) {
+        const cap = Math.max(0, safeParseFloat(max, 0));
+        if (cap <= 0) return 0;
+        const fraction = (stableHash(seedText) % 1000000) / 999999;
+        const factor = Math.pow(10, decimals);
+        return Math.round(fraction * cap * factor) / factor;
+    }
+
+    function stablePickList(options, count, seedText) {
+        if (!Array.isArray(options) || options.length === 0 || count <= 0) return [];
+        const start = stableHash(seedText) % options.length;
+        const out = [];
+        for (let i = 0; i < options.length && out.length < count; i++) {
+            out.push(options[(start + i) % options.length]);
+        }
+        return out;
     }
 
     function sanitizeNewEquipCoreAttrBonuses(equipKey, equipVal) {
@@ -226,8 +270,124 @@
             }
         }
 
+        // 裁剪后若低于品质应有的六维总点数，回填到其它未达单项上限的六维。
+        // 例如神器要求总点数2、单项上限1，敏捷+2 会被修正为 敏捷+1，并补1点到另一六维。
+        const refillAdded = [];
+        const getMergedEntry = (key) => mergedByKey.find(x => x.key === key);
+        const addRefillPoint = (key) => {
+            const entry = getMergedEntry(key);
+            if (entry) {
+                if (entry.value >= singleLimit) return false;
+                entry.value += 1;
+            } else {
+                mergedByKey.push({ key, value: 1 });
+            }
+            refillAdded.push(key);
+            return true;
+        };
+
+        let coreTotal = mergedByKey.reduce((sum, x) => sum + x.value, 0);
+        if (totalLimit > 0 && singleLimit > 0 && coreTotal < totalLimit) {
+            const seedText = `${equipKey}|${equipVal.名称 || ''}|${quality}`;
+            const seed = stableHash(seedText);
+            const rotatedAttrs = CORE_ATTR_KEYS.map((_, idx) => CORE_ATTR_KEYS[(idx + seed) % CORE_ATTR_KEYS.length]);
+            const fillOrder = [...new Set([...coreOrder, ...rotatedAttrs])];
+            let guard = CORE_ATTR_KEYS.length * Math.max(1, singleLimit);
+            while (coreTotal < totalLimit && guard-- > 0) {
+                let filled = false;
+                for (const key of fillOrder) {
+                    if (coreTotal >= totalLimit) break;
+                    if (addRefillPoint(key)) {
+                        coreTotal += 1;
+                        filled = true;
+                    }
+                }
+                if (!filled) break;
+            }
+        }
+
+        const equipType = getEquipType(equipVal);
+        const canKeepCritDamage = equipType === '武器' || equipType === '首饰';
+        const isArmorLike = equipType === '防具' || isShieldLikeEquip(equipVal);
+        const critDamageFixes = [];
+        const critDamageConversions = [];
+        const illegalCritDamageRemoved = [];
+        const addOtherEntry = (entries, key, value) => {
+            const existing = entries.find(entry => entry[0] === key);
+            if (existing) {
+                const oldVal = safeParseFloat(existing[1], 0);
+                const addVal = safeParseFloat(value, 0);
+                existing[1] = Math.round((oldVal + addVal) * 100) / 100;
+            } else {
+                entries.push([key, value]);
+            }
+        };
+        const getOtherValue = (entries, key) => {
+            const existing = entries.find(entry => entry[0] === key);
+            return existing ? safeParseFloat(existing[1], 0) : 0;
+        };
+        const isNonStackingSkillKey = (skillKey) => skillKey === '全技能' || String(skillKey || '').startsWith('觉醒');
+        const addConvertedSkillEntry = (entries, skillKey, value, seedText) => {
+            const addValue = safeParseFloat(value, 0);
+            if (addValue <= 0) return false;
+
+            let targetKey = skillKey;
+            if (isNonStackingSkillKey(skillKey) && getOtherValue(entries, skillKey) > 0) {
+                const fallbackOrder = stablePickList(CRIT_TO_SKILL_FALLBACK_TIERS, CRIT_TO_SKILL_FALLBACK_TIERS.length, seedText);
+                targetKey = fallbackOrder.find(candidate => candidate !== skillKey) || CRIT_TO_SKILL_FALLBACK_TIERS[0];
+            }
+
+            addOtherEntry(entries, targetKey, addValue);
+            critDamageConversions.push(`${targetKey}+${Math.round(addValue * 100) / 100}`);
+            return true;
+        };
+        const sanitizedOtherEntries = [];
+        otherEntries.forEach(([key, rawVal]) => {
+            if (key !== '暴击伤害') {
+                addOtherEntry(sanitizedOtherEntries, key, rawVal);
+                return;
+            }
+
+            if (!canKeepCritDamage) {
+                if (isArmorLike) {
+                    const rule = QUALITY_ARMOR_CRIT_TO_SKILL_RULES[quality];
+                    if (rule?.fixed) {
+                        Object.entries(rule.fixed).forEach(([skillKey, value]) => {
+                            addConvertedSkillEntry(sanitizedOtherEntries, skillKey, value, `${equipKey}|${equipVal.名称 || ''}|${quality}|${skillKey}|暴击伤害转技能`);
+                        });
+                    } else if (rule?.pick) {
+                        const targetCount = rule.count || 1;
+                        const targetValue = rule.value || 1;
+                        stablePickList(rule.pick, targetCount, `${equipKey}|${equipVal.名称 || ''}|${quality}|暴击伤害转技能`).forEach(skillKey => {
+                            addConvertedSkillEntry(sanitizedOtherEntries, skillKey, targetValue, `${equipKey}|${equipVal.名称 || ''}|${quality}|${skillKey}|暴击伤害转技能`);
+                        });
+                    } else {
+                        illegalCritDamageRemoved.push(`${equipType || '未知类型'}:${quality}`);
+                    }
+                } else {
+                    illegalCritDamageRemoved.push(`${equipType || '未知类型'}:${quality}`);
+                }
+                return;
+            }
+
+            const cap = QUALITY_CRIT_DAMAGE_LIMITS[quality] ?? QUALITY_CRIT_DAMAGE_LIMITS['普通'];
+            const parsed = safeParseFloat(rawVal, 0);
+            let normalized = parsed > 1 ? parsed / 100 : parsed;
+            normalized = Math.max(0, normalized);
+            let nextVal = normalized;
+            if (normalized > cap) {
+                nextVal = stableRandomDecimal(`${equipKey}|${equipVal.名称 || ''}|${quality}|暴击伤害`, cap, 2);
+                critDamageFixes.push(`${parsed}→${nextVal}`);
+            } else if (parsed !== normalized) {
+                critDamageFixes.push(`${parsed}→${normalized}`);
+            }
+            if (nextVal > 0) {
+                addOtherEntry(sanitizedOtherEntries, key, nextVal);
+            }
+        });
+
         const sanitizedBonuses = {};
-        otherEntries.forEach(([k, v]) => { sanitizedBonuses[k] = v; });
+        sanitizedOtherEntries.forEach(([k, v]) => { sanitizedBonuses[k] = v; });
         mergedByKey.forEach(({ key, value }) => {
             if (value > 0) sanitizedBonuses[key] = value;
         });
@@ -236,7 +396,6 @@
 
         equipVal.属性加成 = sanitizedBonuses;
 
-        const coreTotal = mergedByKey.reduce((sum, x) => sum + x.value, 0);
         if (!hasKnownQuality) {
             console.warn(`[变量守卫] ⚠️ 新增装备 "${equipKey}" 品质="${quality}" 未命中规则，按普通处理(六维点数=0, 单项上限=0)`);
         }
@@ -248,6 +407,18 @@
         }
         if (totalTrimmed.length > 0) {
             console.warn(`[变量守卫] ⚠️ 新增装备 "${equipKey}" 六维点数上限(${totalLimit})截断: ${totalTrimmed.join(', ')}`);
+        }
+        if (refillAdded.length > 0) {
+            console.warn(`[变量守卫] ⚠️ 新增装备 "${equipKey}" 六维点数不足，已补足: ${refillAdded.join(', ')}`);
+        }
+        if (critDamageFixes.length > 0) {
+            console.warn(`[变量守卫] ⚠️ 新增装备 "${equipKey}" 暴击伤害超出品质上限，已修正: ${critDamageFixes.join(', ')}`);
+        }
+        if (critDamageConversions.length > 0) {
+            console.warn(`[变量守卫] ⚠️ 新增装备 "${equipKey}" 防具不允许暴击伤害，已转为技能等级: ${critDamageConversions.join(', ')}`);
+        }
+        if (illegalCritDamageRemoved.length > 0) {
+            console.warn(`[变量守卫] ⚠️ 新增装备 "${equipKey}" 当前类型/品质无可用技能等级替换，暴击伤害已移除: ${illegalCritDamageRemoved.join(', ')}`);
         }
         console.warn(`[变量守卫] ⚠️ 新增装备 "${equipKey}" 六维属性已修复: 品质=${quality}, 六维点数上限=${totalLimit}, 单一六维上限=${singleLimit}, 修复后总和=${coreTotal}`);
     }
@@ -390,6 +561,7 @@
         const combat = player.战斗属性;
         const rate = safeParseFloat(combat.暴击率, 0);
         let offset = Math.floor(rate / 10);
+        if (offset < 0) offset = 0;
         if (offset > 10) offset = 10;
         const computedThreshold = 10 - offset;
 
@@ -2057,11 +2229,8 @@
                 calculateDamageReductions(player, playerBefore);
             }
 
-            // 暴击率变化 → 战斗属性重算
-            if (!playerBefore ||
-                player.战斗属性?.暴击率 !== playerBefore.战斗属性?.暴击率) {
-                calculateCombatStats(player);
-            }
+            // 暴击率变化/阈值异常 → 战斗属性重算
+            calculateCombatStats(player);
 
             const comboEnteredBattle = handleComboBattleEntry(statData, statDataBefore);
             console.log(`[组合切换] 主循环 comboEnteredBattle=${comboEnteredBattle}`);
