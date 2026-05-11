@@ -9409,6 +9409,11 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     font-size: 0.84rem;
     color: #2D3436;
     line-height: 1.7;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
 }
 #${SCRIPT_ID}-panel .fusion-card .f-effect-list {
     display: flex;
@@ -9423,7 +9428,9 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     border-radius: 12px;
     background: linear-gradient(135deg, rgba(252, 252, 255, 0.98) 0%, rgba(245, 246, 252, 0.95) 100%);
     border: 1px solid rgba(108, 92, 231, 0.07);
-    overflow: hidden;
+    overflow: visible;
+    flex: 0 0 auto;
+    min-height: max-content;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 #${SCRIPT_ID}-panel .fusion-card .f-effect-entry:hover {
@@ -9460,6 +9467,13 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     line-height: 1.65;
     text-wrap: pretty;
     word-break: break-word;
+    display: block !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    max-height: none !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
 }
 @media (max-width: 480px) {
     #${SCRIPT_ID}-panel .fusion-card .f-effect-box {
