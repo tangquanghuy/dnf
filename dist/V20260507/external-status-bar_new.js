@@ -5919,6 +5919,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     // 9. 其他属性加成写回（六维、暴击率、暴击伤害等）
     // 排除已经单独处理的属性：生命值上限、物理减伤、魔法减伤
     const excludeAttrs = ['生命值上限', '物理减伤', '魔法减伤'];
+    let nextCritRate = parseFloat(_.get(data, ['人物', '战斗属性', '暴击率'])) || 0;
 
     Object.entries(BONUS_ATTR_MAP).forEach(([attrName, config]) => {
       if (excludeAttrs.includes(attrName)) return;
@@ -5933,6 +5934,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
       const currentVal = parseFloat(_.get(data, config.path.split('/').filter(Boolean))) || config.base || 0;
       const baseVal = currentVal - prevBonus;
       const newVal = baseVal + newBonus;
+      if (attrName === '暴击率') nextCritRate = newVal;
 
       patches.push({
         op: 'replace',
@@ -5942,6 +5944,17 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
 
       log.info(`[装备属性] ${attrName}: ${currentVal} → ${newVal} (装备加成 ${prevBonus} → ${newBonus})`);
     });
+
+    const nextCritThreshold = 10 - Math.min(10, Math.max(0, Math.floor(nextCritRate / 10)));
+    const currentCritThreshold = parseFloat(_.get(data, ['人物', '战斗属性', '暴击阈值']));
+    if (currentCritThreshold !== nextCritThreshold) {
+      patches.push({
+        op: _.has(data, ['人物', '战斗属性', '暴击阈值']) ? 'replace' : 'add',
+        path: '/人物/战斗属性/暴击阈值',
+        value: nextCritThreshold
+      });
+      log.info(`[装备属性] 暴击阈值: ${Number.isFinite(currentCritThreshold) ? currentCritThreshold : '未设置'} → ${nextCritThreshold} (暴击率 ${nextCritRate}%)`);
+    }
 
     return patches;
   };
@@ -6311,7 +6324,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     // buildEquipRecalcPatches 已将装备词条写入战斗属性，这里直接显示最终值，避免重复叠加
     const 暴击率 = Math.min(100, parseFloat(战斗属性.暴击率) || 0);
     const 暴击伤害 = Math.round((parseFloat(战斗属性.暴击伤害) || 1.5) * 100) / 100;
-    const 暴击阈值 = 战斗属性.暴击阈值 || 10;
+    const 暴击阈值 = 10 - Math.min(10, Math.max(0, Math.floor(暴击率 / 10)));
 
     const $critCards = $panel.find('.crit-stats-row .cs-card');
     $critCards.eq(0).find('.cs-value').html(暴击率 + '<small style="color:#2D3436;">%</small>');
@@ -9086,6 +9099,8 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     display: flex;
     gap: 8px;
     justify-content: center;
+    flex-shrink: 0;
+    background: #fff;
 }
 #${SCRIPT_ID}-panel .f-actions.f-actions-dual {
     gap: 12px;
@@ -9148,7 +9163,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    overflow-y: auto;
+    overflow: hidden;
     padding: 16px 0;
     animation: ${SCRIPT_ID}-popupFadeIn 0.2s ease;
 }
@@ -9164,11 +9179,14 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 15px 40px rgba(59, 66, 89, 0.15);
-    overflow: hidden auto;
+    overflow: hidden;
     border: 1px solid rgba(0, 0, 0, 0.03);
     position: relative;
     animation: ${SCRIPT_ID}-slideUp 0.5s ease;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 @keyframes ${SCRIPT_ID}-slideUp {
     from { opacity: 0; transform: translateY(20px); }
@@ -9207,6 +9225,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     padding: 16px 20px 8px;
     position: relative;
     background: linear-gradient(to bottom, #fff, #fafafa);
+    flex-shrink: 0;
 }
 #${SCRIPT_ID}-panel .fusion-card .f-meta-row {
     display: flex;
@@ -9271,6 +9290,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     display: flex;
     gap: 30px;
     margin-top: 10px;
+    flex-shrink: 0;
 }
 #${SCRIPT_ID}-panel .fusion-card .f-mini-stat {
     display: flex;
@@ -9307,6 +9327,21 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
 /* 内容区域 */
 #${SCRIPT_ID}-panel .fusion-card .f-content {
     padding: 15px 20px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+#${SCRIPT_ID}-panel .fusion-card .f-content::-webkit-scrollbar {
+    width: 5px;
+}
+#${SCRIPT_ID}-panel .fusion-card .f-content::-webkit-scrollbar-thumb {
+    background: rgba(99, 110, 114, 0.28);
+    border-radius: 999px;
+}
+#${SCRIPT_ID}-panel .fusion-card .f-content::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 /* 数据组 */
@@ -12046,6 +12081,8 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     display: flex;
     flex-direction: column;
     gap: 12px;
+    flex-shrink: 0;
+    background: #fff;
 }
 
 /* 等级控制器 */
@@ -12219,6 +12256,9 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     margin-top: 12px;
     border-top: 1px solid rgba(0, 0, 0, 0.06);
     padding-top: 12px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
 }
 
 #${SCRIPT_ID}-panel .combo-skill-picker-title {
@@ -14005,4 +14045,3 @@ ultimate = 显示终结组</pre>
     });
   }
 })();
-
