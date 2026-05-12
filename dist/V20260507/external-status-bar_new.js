@@ -3129,15 +3129,34 @@ ${lockedSkillsJson}
     const normalized = String(effectText ?? '').trim();
     if (!normalized || normalized === '无') return null;
 
-    const segments = normalized.split(/[；;]+/).map(part => part.trim()).filter(Boolean);
-    if (segments.length === 0) return null;
-
     const entries = [];
-    for (const segment of segments) {
-      const match = segment.match(/^\[([^\[\]]+)\]\s*([\s\S]+)$/);
-      if (!match) return null;
-      const label = match[1].trim();
-      const content = match[2].trim();
+    const starts = [];
+    const entryStartPattern = /(^|[\uFF1B;\r\n])\s*\[([^\[\]\r\n]{1,40})\]\s*/g;
+    let match;
+
+    while ((match = entryStartPattern.exec(normalized)) !== null) {
+      const label = match[2].trim();
+      const bracketOffset = match[0].lastIndexOf('[');
+      const labelStart = match.index + bracketOffset;
+      const contentStart = match.index + match[0].length;
+
+      if (!label || /[+\-*/\u00d7%=]/.test(label) || /^\d/.test(label)) continue;
+      starts.push({
+        label,
+        labelStart,
+        contentStart,
+        delimiterStart: match.index
+      });
+    }
+
+    if (starts.length === 0 || starts[0].labelStart !== 0) return null;
+
+    for (let i = 0; i < starts.length; i++) {
+      const current = starts[i];
+      const next = starts[i + 1];
+      const contentEnd = next ? next.delimiterStart : normalized.length;
+      const label = current.label;
+      const content = normalized.slice(current.contentStart, contentEnd).trim();
       if (!label || !content) return null;
       entries.push({ label, content });
     }
