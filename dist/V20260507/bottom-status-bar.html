@@ -1301,6 +1301,60 @@
       padding-bottom: 20px;
     }
 
+    .slots-grid.classic-main-grid {
+      --classic-mobile-slot-size: 48px;
+    }
+
+    @media (max-width: 640px) {
+      .slots-grid.classic-main-grid {
+        display: grid;
+        grid-template-columns: repeat(8, calc(var(--classic-mobile-slot-size) / 2));
+        column-gap: 5px;
+        row-gap: 28px;
+        justify-content: center;
+        align-items: start;
+      }
+
+      .classic-main-grid .skill-slot-wrapper {
+        grid-column: auto / span 2;
+      }
+
+      .classic-main-grid .skill-slot-wrapper:nth-child(1) {
+        grid-column: 2 / span 2;
+        grid-row: 1;
+      }
+
+      .classic-main-grid .skill-slot-wrapper:nth-child(2) {
+        grid-column: 4 / span 2;
+        grid-row: 1;
+      }
+
+      .classic-main-grid .skill-slot-wrapper:nth-child(3) {
+        grid-column: 6 / span 2;
+        grid-row: 1;
+      }
+
+      .classic-main-grid .skill-slot-wrapper:nth-child(4) {
+        grid-column: 1 / span 2;
+        grid-row: 2;
+      }
+
+      .classic-main-grid .skill-slot-wrapper:nth-child(5) {
+        grid-column: 3 / span 2;
+        grid-row: 2;
+      }
+
+      .classic-main-grid .skill-slot-wrapper:nth-child(6) {
+        grid-column: 5 / span 2;
+        grid-row: 2;
+      }
+
+      .classic-main-grid .skill-slot-wrapper:nth-child(7) {
+        grid-column: 7 / span 2;
+        grid-row: 2;
+      }
+    }
+
     .slots-grid.combo-main-grid {
       flex-wrap: nowrap;
       align-items: flex-start;
@@ -6216,6 +6270,10 @@
         row-gap: 30px;
       }
 
+      .slots-grid.classic-main-grid {
+        --classic-mobile-slot-size: 44px;
+      }
+
       .combo-layout-desktop {
         display: none !important;
       }
@@ -6580,6 +6638,12 @@
         row-gap: 28px;
       }
 
+      .slots-grid.classic-main-grid {
+        --classic-mobile-slot-size: 40px;
+        column-gap: 4px;
+        row-gap: 26px;
+      }
+
       .combo-mobile-secondary-grid {
         gap: 10px;
       }
@@ -6927,6 +6991,12 @@
 
       .slots-grid {
         gap: 6px;
+        row-gap: 24px;
+      }
+
+      .slots-grid.classic-main-grid {
+        --classic-mobile-slot-size: 36px;
+        column-gap: 4px;
         row-gap: 24px;
       }
 
@@ -11100,7 +11170,7 @@ ${CHARACTER_PROFILE_FORMAT_SAMPLE.trim()}
               <div class="slots-grid combo-mobile-main-grid">${comboMobileMainHTML}</div>
               <div class="slots-grid combo-mobile-secondary-grid" style="padding-bottom:10px">${comboMobileSecondaryHTML}</div>
             </div>`
-          : `<div class="slots-grid">${comboMainHTML}</div>
+          : `<div class="slots-grid classic-main-grid">${comboMainHTML}</div>
             <div class="slots-grid" style="padding-bottom:10px">${secondRowHTML}</div>`;
 
         // 召唤物栏渲染（技能槽下方，有才显示，遍历所有召唤物）
