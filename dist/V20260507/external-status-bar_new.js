@@ -3755,8 +3755,8 @@ ${lockedSkillsJson}
 
   // ==================== 特质商店弹窗 ====================
   const EQUIP_SHOP_SOURCE_URLS = Object.freeze([
+    'https://cdn.jsdelivr.net/gh/tangquanghuy/dnf@master/start_equipment_shop_v1_3.json',
     'https://testingcf.jsdelivr.net/gh/tangquanghuy/dnf@latest/start_equipment_shop_v1_3.json',
-    'https://testingcf.jsdelivr.net/gh/tangquanghuy/dnf@latest/code/start_equipment_shop.json',
     './start_equipment_shop.json'
   ]);
   const EQUIP_SHOP_DEFAULT_PRICE_MAP = Object.freeze({
