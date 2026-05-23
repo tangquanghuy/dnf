@@ -9114,6 +9114,8 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
 /* ========== 弹窗操作按钮样式 ========== */
 #${SCRIPT_ID}-panel .f-actions {
     padding: 12px 16px;
+    padding-bottom: calc(12px + constant(safe-area-inset-bottom));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid #eee;
     display: flex;
     gap: 8px;
@@ -9182,8 +9184,12 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    overflow: hidden;
-    padding: 16px 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 12px;
+    padding-bottom: calc(16px + constant(safe-area-inset-bottom));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     animation: ${SCRIPT_ID}-popupFadeIn 0.2s ease;
 }
 @keyframes ${SCRIPT_ID}-popupFadeIn {
@@ -9193,8 +9199,8 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
 
 /* Fusion Card 主体 */
 #${SCRIPT_ID}-panel .fusion-card {
-    width: 300px;
-    max-height: calc(100% - 32px);
+    width: min(300px, 100%);
+    max-height: calc(100% - 32px - env(safe-area-inset-bottom, 0px));
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 15px 40px rgba(59, 66, 89, 0.15);
@@ -9495,6 +9501,22 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     line-clamp: unset !important;
 }
 @media (max-width: 480px) {
+    #${SCRIPT_ID}-popup.fusion-popup-overlay {
+        align-items: flex-start;
+        padding-top: 12px;
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-bottom: calc(12px + constant(safe-area-inset-bottom));
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    #${SCRIPT_ID}-panel .fusion-card {
+        width: 100%;
+        max-height: calc(100% - 24px - env(safe-area-inset-bottom, 0px));
+    }
+    #${SCRIPT_ID}-panel .f-actions {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
     #${SCRIPT_ID}-panel .fusion-card .f-effect-box {
         padding: 12px 14px;
         border-radius: 14px;
