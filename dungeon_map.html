@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>子地图生成器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; background:#1a1a2e; color:#c8b88a; }
+
+#app { display:flex; height:100vh; }
+
+/* 左侧表单 */
+#form-panel {
+  width:340px; background:rgba(15,20,35,0.95); border-right:1px solid rgba(200,184,138,0.15);
+  padding:20px; overflow-y:auto;
+}
+#form-panel h1 { font-size:18px; color:#e8dcc0; margin-bottom:16px; }
+.form-group { margin-bottom:14px; }
+.form-group label { display:block; font-size:12px; color:#8a7a5a; margin-bottom:4px; font-weight:600; }
+.form-group input, .form-group select, .form-group textarea {
+  width:100%; padding:8px 10px; background:rgba(20,28,42,0.8); border:1px solid rgba(200,184,138,0.2);
+  border-radius:6px; color:#e8dcc0; font-family:inherit; font-size:13px; outline:none;
+}
+.form-group textarea { resize:vertical; min-height:60px; font-family:inherit; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color:rgba(200,184,138,0.5);
+}
+.form-row { display:flex; gap:10px; }
+.form-row .form-group { flex:1; }
+
+#generate-btn {
+  width:100%; padding:12px; background:linear-gradient(135deg, #5b4bc4, #7f72ff);
+  color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700;
+  cursor:pointer; margin-top:8px;
+}
+#generate-btn:hover { filter:brightness(1.1); }
+#generate-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+#progress {
+  margin-top:16px; padding:10px; background:rgba(108,92,231,0.1);
+  border-radius:6px; font-size:12px; line-height:1.6; display:none;
+}
+#progress.active { display:block; }
+#progress.error { background:rgba(233,69,96,0.15); color:#ff8090; }
+
+#progress-bar {
+  width:100%; height:4px; background:rgba(200,184,138,0.15); border-radius:2px;
+  overflow:hidden; margin-top:8px;
+}
+#progress-bar-fill {
+  height:100%; background:linear-gradient(90deg,#6c5ce7,#a29bfe);
+  width:0%; transition:width 0.3s;
+}
+
+#actions { display:none; margin-top:12px; gap:8px; flex-wrap:wrap; }
+#actions.active { display:flex; }
+.action-btn {
+  flex:1; padding:8px; background:rgba(200,184,138,0.1); color:#c8b88a;
+  border:1px solid rgba(200,184,138,0.2); border-radius:6px; font-size:12px;
+  cursor:pointer; font-family:inherit;
+}
+.action-btn:hover { background:rgba(200,184,138,0.2); }
+
+/* 右侧地图 */
+#map-area { flex:1; position:relative; overflow:hidden; }
+#map-container { position:relative; width:100%; height:100%; cursor:grab; }
+#map-container.grabbing { cursor:grabbing; }
+#edge-canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
+#node-layer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+
+.node-wrapper {
+  position:absolute; display:flex; flex-direction:column; align-items:center;
+  pointer-events:auto; cursor:pointer; transform:translate(-50%,-50%);
+  transition:filter 0.2s, transform 0.1s;
+}
+.node-wrapper:hover { filter:brightness(1.3) drop-shadow(0 0 8px rgba(200,184,138,0.5)); transform:translate(-50%,-50%) scale(1.05); }
+.node-icon { display:flex; align-items:center; justify-content:center; }
+.node-label {
+  margin-top:4px; white-space:nowrap; text-align:center; color:#f0e8d0;
+  font-weight:700; font-size:12px; text-shadow:1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+  background:rgba(10,10,20,0.85); padding:2px 8px; border-radius:3px;
+}
+
+#empty-state {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  color:rgba(200,184,138,0.4); font-size:14px;
+}
+
+/* Detail Modal */
+.detail-overlay {
+  display:none; position:fixed; inset:0; z-index:200;
+  background:rgba(5,5,15,0.8); backdrop-filter:blur(6px);
+  justify-content:center; align-items:center;
+}
+.detail-overlay.active { display:flex; }
+.detail-panel {
+  width:90%; max-width:600px; max-height:85vh;
+  background:rgba(20,25,40,0.97); border:1px solid rgba(200,184,138,0.2);
+  border-radius:12px; overflow-y:auto;
+}
+.detail-close {
+  position:sticky; top:0; right:0; z-index:10; float:right;
+  margin:12px 12px 0 0; width:32px; height:32px;
+  border:1px solid rgba(200,184,138,0.2); background:rgba(20,28,36,0.9);
+  color:#c8b88a; font-size:18px; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.detail-header { padding:24px 24px 14px; border-bottom:1px solid rgba(200,184,138,0.1); }
+.detail-title { font-size:18px; font-weight:700; color:#e8dcc0; margin-bottom:6px; }
+.detail-badge {
+  display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px;
+  background:rgba(200,184,138,0.1); color:#c8b88a;
+  border:1px solid rgba(200,184,138,0.2); margin-right:6px;
+}
+.detail-summary { padding:14px 24px; color:#b8b8a8; font-size:13px; line-height:1.8; border-bottom:1px solid rgba(200,184,138,0.08); white-space:pre-line; }
+.detail-body { padding:8px 24px 24px; }
+.detail-section { margin-top:12px; padding-top:10px; border-top:1px solid rgba(200,184,138,0.06); }
+.detail-section-title { font-size:11px; color:#8a7a5a; font-weight:600; margin-bottom:6px; letter-spacing:1px; }
+.detail-section-content { font-size:12px; color:#c8c0a8; line-height:1.7; white-space:pre-line; }
+
+/* 详情面板的操作按钮 */
+.detail-actions {
+  padding:14px 24px; display:flex; gap:8px; flex-wrap:wrap;
+  border-top:1px solid rgba(200,184,138,0.1); background:rgba(108,92,231,0.05);
+}
+.detail-action-btn {
+  flex:1; padding:8px 12px; background:rgba(200,184,138,0.1); color:#c8b88a;
+  border:1px solid rgba(200,184,138,0.2); border-radius:6px; font-size:12px;
+  cursor:pointer; font-family:inherit; font-weight:600;
+}
+.detail-action-btn:hover { background:rgba(200,184,138,0.2); }
+.detail-action-btn.primary {
+  background:linear-gradient(135deg, rgba(108,92,231,0.3), rgba(127,114,255,0.3));
+  border-color:rgba(108,92,231,0.4); color:#e8dcc0;
+}
+
+/* 通知 toast */
+#toast {
+  position:fixed; top:20px; left:50%; transform:translateX(-50%);
+  padding:10px 20px; border-radius:8px; font-size:13px; z-index:300;
+  background:rgba(20,28,42,0.95); color:#c8b88a;
+  border:1px solid rgba(200,184,138,0.3); display:none;
+}
+#toast.show { display:block; animation:toastIn 0.3s; }
+#toast.error { border-color:rgba(233,69,96,0.5); color:#ff8090; }
+#toast.success { border-color:rgba(46,204,113,0.5); color:#a0e6b3; }
+@keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(-10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 左侧表单 -->
+  <div id="form-panel">
+    <h1>子地图生成器</h1>
+
+    <div class="form-group">
+      <label>场所名称</label>
+      <input id="f-name" type="text" placeholder="如：开封府西街老宅">
+    </div>
+
+    <div class="form-group">
+      <label>场所背景 *</label>
+      <textarea id="f-background" placeholder="这里是什么地方、有什么历史、当前状态"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>剧情目标（可选）</label>
+      <textarea id="f-objective" placeholder="玩家来这里要找什么、查什么"></textarea>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>规模</label>
+        <select id="f-size">
+          <option value="6">小（5-7节点）</option>
+          <option value="9" selected>中（8-10节点）</option>
+          <option value="13">大（11-15节点）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>玩家等级</label>
+        <input id="f-level" type="number" value="30" min="1" max="100">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>聊天历史条数</label>
+      <input id="f-history" type="number" value="8" min="0" max="20">
+    </div>
+
+    <button id="generate-btn">生成地图</button>
+
+    <div id="progress">
+      <div id="progress-text">准备中...</div>
+      <div id="progress-bar"><div id="progress-bar-fill"></div></div>
+    </div>
+
+    <div id="actions">
+      <button class="action-btn" id="apply-btn">应用到聊天</button>
+      <button class="action-btn" id="export-btn">导出 JSON</button>
+      <button class="action-btn" id="copy-btn">复制 JSON</button>
+    </div>
+  </div>
+
+  <!-- 右侧地图 -->
+  <div id="map-area">
+    <div id="empty-state">填写左侧表单后点击"生成地图"</div>
+    <div id="map-container" style="display:none;">
+      <canvas id="edge-canvas"></canvas>
+      <div id="node-layer"></div>
+    </div>
+  </div>
+</div>
+
+<div class="detail-overlay" id="detail-overlay">
+  <div class="detail-panel">
+    <button class="detail-close" id="detail-close">✕</button>
+    <div class="detail-header" id="detail-header"></div>
+    <div class="detail-summary" id="detail-summary"></div>
+    <div class="detail-body" id="detail-body"></div>
+    <div class="detail-actions">
+      <button class="detail-action-btn primary" id="detail-enter-btn">进入此处（同步到主AI）</button>
+      <button class="detail-action-btn" id="detail-copy-btn">复制描述</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ==================== 节点类型配置 ====================
+const typeConfig = {
+  waystation: { size:22, color:'#f0e4c4', label:'入口' },
+  ruins:      { size:20, color:'#8b6914', label:'废墟' },
+  dungeon:    { size:24, color:'#e07050', label:'战斗区' },
+  temple:     { size:22, color:'#a29bfe', label:'祭坛' },
+  mine:       { size:20, color:'#b88a44', label:'矿道' },
+  cemetery:   { size:20, color:'#7c8a99', label:'墓室' },
+  camp:       { size:22, color:'#d49060', label:'据点' },
+  poi:        { size:20, color:'#a8d8ea', label:'兴趣点' },
+  portal:     { size:22, color:'#ffd700', label:'出口' },
+};
+
+const FIELD_LABELS = {
+  monsters: '怪物',
+  environmentFeatures: '环境特征',
+  secrets: 'GM专属',
+};
+
+// ==================== 状态 ====================
+let currentMapData = null;
+let viewX = 0, viewY = 0, scale = 1.0;
+let isDragging = false, dragStartX = 0, dragStartY = 0, dragViewX = 0, dragViewY = 0;
+let nodeElements = [];
+
+// ==================== DOM ====================
+const $ = id => document.getElementById(id);
+const container = $('map-container');
+const canvas = $('edge-canvas');
+const ctx = canvas.getContext('2d');
+const nodeLayer = $('node-layer');
+const emptyState = $('empty-state');
+
+// ==================== 工具 ====================
+function escHtml(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function setProgress(percent, text, isError=false) {
+  const p = $('progress');
+  p.classList.add('active');
+  p.classList.toggle('error', isError);
+  $('progress-text').textContent = text;
+  $('progress-bar-fill').style.width = percent + '%';
+}
+
+function safeParseJson(text) {
+  if (!text) return null;
+  // 去除可能的 markdown 代码块包裹
+  text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  try { return JSON.parse(text); } catch {}
+  // 尝试提取第一个 JSON 对象
+  const match = text.match(/\{[\s\S]*\}/);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch {}
+  }
+  return null;
+}
+
+// ==================== 获取酒馆聊天历史 ====================
+function getChatHistory(limit = 8) {
+  if (limit <= 0) return '';
+  try {
+    const targetWindow = window.parent || window;
+    // 尝试 SillyTavern 的全局变量
+    const chat = targetWindow.SillyTavern?.getContext?.()?.chat
+              || targetWindow.chat
+              || (targetWindow.parent && targetWindow.parent.chat);
+    if (!chat || !Array.isArray(chat)) return '';
+    const recent = chat.slice(-limit);
+    return recent.map(msg => {
+      const role = msg.is_user ? '用户' : (msg.name || '角色');
+      return `**${role}**: ${(msg.mes || '').slice(0, 500)}`;
+    }).join('\n\n');
+  } catch (e) {
+    console.warn('[子地图生成器] 获取聊天历史失败:', e);
+    return '';
+  }
+}
+
+// ==================== 调用 LLM ====================
+async function callLLM(systemPrompt, userPrompt) {
+  const targetWindow = window.parent || window;
+  const TavernHelper = targetWindow.TavernHelper;
+  if (!TavernHelper) {
+    throw new Error('TavernHelper 不可用，请在酒馆环境中运行');
+  }
+
+  // 用 generate 而不是 generateRaw，让世界书自动一起发送
+  // 系统提示词和用户提示词合并为 user_input
+  const completePrompt = `${systemPrompt}\n\n${userPrompt}`;
+
+  if (TavernHelper.generate) {
+    return await TavernHelper.generate({
+      user_input: completePrompt,
+      max_chat_history: 0  // 我们已经在 prompt 里手动注入了所需的聊天历史
+    });
+  }
+
+  if (TavernHelper.generateRaw) {
+    return await TavernHelper.generateRaw({
+      ordered_prompts: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      max_chat_history: 0
+    });
+  }
+
+  throw new Error('TavernHelper.generate / generateRaw 都不可用');
+}
+
+// ==================== SKILL 提示词构建 ====================
+// 核心规范（每一步共用），与 dungeon_generator.md 保持一致
+const COMMON_HEADER = `你是 TRPG 子地图生成助手。只输出严格 JSON，不输出任何解释、注释、markdown 代码块。
+
+世界观、怪物体系、等级强度对标、禁忌词汇等设定请参考已激活的世界书内容。
+
+【节点 type 取值】
+- waystation：入口、安全点
+- ruins：废墟、坍塌区
+- dungeon：主战斗区、Boss 房
+- temple：祭坛、仪式场所
+- mine：矿道、挖掘区
+- cemetery：墓室
+- camp：敌人据点
+- poi：谜题房、线索房、叙事房
+- portal：出口、密道
+
+【节点命名规则（极其重要）】
+简洁、具体、有画面感的中文名称。让玩家一眼就能理解这是什么地方。
+
+好的命名：
+- 朱漆大门、东厢书房、半塌门楼、油灯走廊
+- 刑房、密室暗格、天井水井、地窖入口
+- 百器架、灵位堂、碎瓷废墟、棺椁阶
+
+禁止的命名：
+- 缥缈虚无之境、寂灭轮回殿堂（过度文艺）
+- 第一房间、走廊 A、地点 7（无信息量）
+- 氤氲缭绕之所、晦明交错之厅（生僻晦涩）
+
+【连接数硬性上限】
+- waystation（入口/枢纽厅）：最多 4 条边
+- dungeon / camp / poi：最多 3 条边
+- temple / cemetery / mine / ruins：最多 3 条边
+- entrance 只能作为 source（不能有入边）
+- exit 只能作为 target（入边 1-3，不能有出边）
+
+禁止的结构：
+- 星形辐射：一个节点连接所有其他节点
+- 蜘蛛网：单节点超过 4 条边
+- 全直连：所有节点都直接连到 entrance
+- 纯线性：A→B→C→D 没有任何分支
+
+推荐的结构：
+入口 → 枢纽厅 → 分支（A 路: 战斗→线索→密室 / B 路: 谜题→陷阱→宝库）→ 汇聚 → 终点
+
+【设计原则】
+- 画面感优先：节点描述要有具体的视觉、听觉、气味细节
+- 信息分层：summary 是玩家走进去就能看到的；secrets 是需要检定、调查、互动才能发现的
+- 怪物规模匹配：怪物等级应在玩家等级 ±10 级以内
+- 连贯性：填充内容时如果传入了相邻节点摘要，新节点的描述要与之呼应`;
+
+const HISTORY_BLOCK = (history) => history ? `\n【近期剧情上下文（生成内容必须与之呼应）】\n${history}\n` : '';
+
+function buildSkeletonPrompt({ name, background, objective, size, history }) {
+  const hasObjective = objective && objective.trim();
+  return `${COMMON_HEADER}
+
+【任务：生成节点骨架（步骤 1）】
+${hasObjective ? '采用叙事优先模式：根据剧情目标设计节点布局，关键叙事节点必须存在，并在其间填入合理的过渡节点。'
+              : '采用空间优先模式：纯粹根据场所背景的空间逻辑生成节点。'}
+
+【场所名称】${name}
+
+【场所背景】
+${background}
+
+${hasObjective ? `【剧情目标】\n${objective}\n` : ''}${HISTORY_BLOCK(history)}
+【规模】共 ${size} 个节点
+
+【要求】
+- 必须有 id="entrance" 的入口节点
+- 必须有 id="exit" 的出口节点（可以是 Boss 房或线索终点）
+- 节点命名要具体有画面感（参考"节点命名规则"）
+- type 选择合理（参考"节点 type 取值"）
+- 输出量上限 500 字符，保持精简
+
+【输出格式】
+{
+  "title": "${name}",
+  "nodes": [
+    {"id": "entrance", "name": "正门", "type": "waystation"},
+    {"id": "...", "name": "...", "type": "..."}
+  ]
+}`;
+}
+
+function buildEdgesPrompt(nodes) {
+  const list = nodes.map(n => `${n.id} | ${n.name} | ${n.type}`).join('\n');
+  return `${COMMON_HEADER}
+
+【任务：生成连接关系（步骤 2）】
+
+【节点列表】
+${list}
+
+【规则】
+- 严格遵守"连接数硬性上限"段中的边数限制
+- 所有节点必须从 entrance 可达
+- 必须有分支路径，禁止纯线性
+- entrance 只能作为 source（不能有入边）
+- exit 只能作为 target（不能有出边）
+- label 描述通道特征：石阶、铁门、暗道、破墙、走廊、藤蔓垂落的裂缝等具体词汇
+- 输出量上限 400 字符
+
+【输出格式】
+{
+  "edges": [
+    {"source": "entrance", "target": "hall_01", "label": "石阶向下"}
+  ]
+}`;
+}
+
+function buildFillPrompt({ name, background, objective, history, level, batch, neighbors }) {
+  const hasObjective = objective && objective.trim();
+  const neighborText = neighbors ? `\n【相邻节点摘要（保持叙事连贯）】\n${neighbors}\n` : '';
+  const batchList = batch.map(n => `${n.id} | ${n.name} | ${n.type}`).join('\n');
+
+  return `${COMMON_HEADER}
+
+【任务：填充节点内容（步骤 3，按批次）】
+
+【场所名称】${name}
+
+【场所背景】
+${background}
+
+${hasObjective ? `【剧情目标】\n${objective}\n` : ''}${HISTORY_BLOCK(history)}
+【玩家等级】${level} 级
+${neighborText}
+【待填充节点】
+${batchList}
+
+【填充规则】
+- summary：50-80 字，玩家可见的感官细节，不含隐藏信息
+- monsters：具体名称与特征。禁止"一群怪物""若干小妖"这种模糊描述。无则为空字符串
+- environmentFeatures：可交互物件、机关、显眼特征
+- secrets：GM 专属，隐藏线索、陷阱、宝箱内容、检定要求
+- 不是每个节点都必须有怪物，允许纯探索 / 谜题 / 叙事节点
+
+【summary 必须包含】
+- 视觉细节：建筑样式、家具陈设、损坏程度
+- 听觉/嗅觉：水声、风声、霉味、血腥气
+- 公开背景：当地人都知道的传说、明显可见的痕迹
+- 整体氛围：阴森 / 庄严 / 凌乱 / 荒凉
+
+【summary 严禁包含】
+- 任何 DC 检定（如"DC 15 察觉..."）
+- 隐藏的陷阱、机关、伏击
+- 需要检定才能发现的线索
+- 怪物的隐藏位置或战术
+
+【secrets 必须包含】
+- DC 检定（"DC 15 察觉发现地砖松动 / DC 13 调查找到夹层"）
+- 陷阱触发条件与伤害
+- 怪物的伏击位置与战术
+- 隐藏线索、密信、暗格、宝箱内容
+- NPC 真实动机、剧情反转
+
+输出量上限：每批 700 字符。
+
+【输出格式】
+{
+  "rooms": [
+    {
+      "id": "节点id",
+      "summary": "...",
+      "monsters": "...",
+      "environmentFeatures": "...",
+      "secrets": "..."
+    }
+  ]
+}`;
+}
+
+// ==================== 验证与修复 ====================
+function validateConnectivity(nodes, edges) {
+  const adj = {};
+  edges.forEach(e => {
+    (adj[e.source] = adj[e.source] || []).push(e.target);
+    (adj[e.target] = adj[e.target] || []).push(e.source);
+  });
+  const visited = new Set();
+  const queue = ['entrance'];
+  while (queue.length) {
+    const id = queue.shift();
+    if (visited.has(id)) continue;
+    visited.add(id);
+    (adj[id] || []).forEach(next => queue.push(next));
+  }
+  return nodes.filter(n => !visited.has(n.id));
+}
+
+function repairIsolated(edges, isolated, allNodes) {
+  isolated.forEach(node => {
+    const target = allNodes.find(n => n.id !== node.id && !isolated.find(i => i.id === n.id));
+    if (target) edges.push({ source: node.id, target: target.id, label: '通道' });
+  });
+}
+
+function filterValidEdges(nodes, edges) {
+  const ids = new Set(nodes.map(n => n.id));
+  return edges.filter(e => ids.has(e.source) && ids.has(e.target));
+}
+
+function assignCoordinates(nodes, edges) {
+  const adj = {};
+  edges.forEach(e => (adj[e.source] = adj[e.source] || []).push(e.target));
+  const visited = new Set(['entrance']);
+  const layers = [['entrance']];
+  let current = ['entrance'];
+  while (current.length) {
+    const next = [];
+    current.forEach(id => (adj[id] || []).forEach(t => {
+      if (!visited.has(t)) { visited.add(t); next.push(t); }
+    }));
+    if (next.length) layers.push(next);
+    current = next;
+  }
+  const covered = new Set(layers.flat());
+  const remaining = nodes.filter(n => !covered.has(n.id)).map(n => n.id);
+  if (remaining.length) layers.push(remaining);
+
+  const LAYER_GAP = 130, NODE_GAP = 130;
+  layers.forEach((layer, depth) => {
+    const offset = (layer.length - 1) * NODE_GAP / 2;
+    layer.forEach((id, idx) => {
+      const node = nodes.find(n => n.id === id);
+      if (node) { node.x = idx * NODE_GAP - offset; node.y = depth * LAYER_GAP - 200; }
+    });
+  });
+}
+
+function getNeighborSummaries(batchIds, edges, completed) {
+  const set = new Set(batchIds);
+  const neighbors = new Set();
+  edges.forEach(e => {
+    if (set.has(e.source) && !set.has(e.target)) neighbors.add(e.target);
+    if (set.has(e.target) && !set.has(e.source)) neighbors.add(e.source);
+  });
+  return [...neighbors]
+    .filter(id => completed[id]?.summary)
+    .map(id => `${id}: ${completed[id].summary.slice(0, 60)}`)
+    .join('\n');
+}
+
+// ==================== 主生成流程 ====================
+async function generate() {
+  const name = $('f-name').value.trim() || '未命名场所';
+  const background = $('f-background').value.trim();
+  const objective = $('f-objective').value.trim();
+  const size = parseInt($('f-size').value);
+  const level = parseInt($('f-level').value);
+  const historyCount = parseInt($('f-history').value);
+
+  if (!background) {
+    setProgress(0, '请先填写场所背景', true);
+    return;
+  }
+
+  const btn = $('generate-btn');
+  btn.disabled = true;
+  $('actions').classList.remove('active');
+
+  try {
+    const history = getChatHistory(historyCount);
+
+    // ===== Step 1: 生成骨架 =====
+    setProgress(10, '步骤 1/3：生成节点骨架...');
+    const skeletonPrompt = buildSkeletonPrompt({ name, background, objective, size, history });
+    let skeletonResp = await callLLM(skeletonPrompt, '生成节点骨架。');
+    let skeletonData = safeParseJson(skeletonResp);
+    if (!skeletonData?.nodes?.length) {
+      // 重试一次
+      setProgress(15, '骨架生成失败，重试...');
+      skeletonResp = await callLLM(skeletonPrompt, '生成节点骨架，严格输出JSON。');
+      skeletonData = safeParseJson(skeletonResp);
+      if (!skeletonData?.nodes?.length) throw new Error('骨架生成失败');
+    }
+    const nodes = skeletonData.nodes.map(n => ({ ...n, x: 0, y: 0 }));
+    const title = skeletonData.title || name;
+
+    // ===== Step 2: 生成连接 =====
+    setProgress(35, '步骤 2/3：生成连接关系...');
+    const edgesPrompt = buildEdgesPrompt(nodes);
+    let edgesResp = await callLLM(edgesPrompt, '生成连接关系。');
+    let edgesData = safeParseJson(edgesResp);
+    let edges = edgesData?.edges || [];
+
+    if (!edges.length) {
+      // 降级：线性兜底
+      console.warn('[子地图生成器] 连接生成失败，使用线性兜底');
+      edges = [];
+      for (let i = 0; i < nodes.length - 1; i++) {
+        edges.push({ source: nodes[i].id, target: nodes[i+1].id, label: '通道' });
+      }
+    }
+
+    edges = filterValidEdges(nodes, edges);
+    const isolated = validateConnectivity(nodes, edges);
+    if (isolated.length) repairIsolated(edges, isolated, nodes);
+    assignCoordinates(nodes, edges);
+
+    // ===== Step 3: 分批填充 =====
+    const BATCH_SIZE = 3;
+    const batches = [];
+    for (let i = 0; i < nodes.length; i += BATCH_SIZE) {
+      batches.push(nodes.slice(i, i + BATCH_SIZE));
+    }
+
+    const completed = {};
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      const progress = 50 + Math.floor((i / batches.length) * 45);
+      setProgress(progress, `步骤 3/3：填充内容（${i+1}/${batches.length}）...`);
+
+      const neighbors = getNeighborSummaries(batch.map(n => n.id), edges, completed);
+      const fillPrompt = buildFillPrompt({
+        name: title, background, objective, history, level,
+        batch, neighbors
+      });
+
+      try {
+        const fillResp = await callLLM(fillPrompt, '填充节点内容。');
+        const fillData = safeParseJson(fillResp);
+        if (fillData?.rooms) {
+          fillData.rooms.forEach(r => {
+            completed[r.id] = r;
+            const node = nodes.find(n => n.id === r.id);
+            if (node) {
+              node.summary = r.summary || '';
+              node.monsters = r.monsters || '';
+              node.environmentFeatures = r.environmentFeatures || '';
+              node.secrets = r.secrets || '';
+            }
+          });
+        }
+      } catch (e) {
+        console.warn(`[子地图生成器] 批次 ${i+1} 填充失败:`, e);
+        // 降级：空描述继续
+        batch.forEach(n => {
+          n.summary = ''; n.monsters = ''; n.environmentFeatures = ''; n.secrets = '';
+        });
+      }
+
+      // 短暂延迟避免 API 过载
+      if (i < batches.length - 1) await new Promise(r => setTimeout(r, 200));
+    }
+
+    // ===== 完成 =====
+    currentMapData = { title, nodes, edges };
+    setProgress(100, `生成完成：${nodes.length} 个节点，${edges.length} 条连接`);
+    $('actions').classList.add('active');
+    renderMap();
+  } catch (e) {
+    console.error(e);
+    setProgress(0, '生成失败：' + e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ==================== 地图渲染 ====================
+function renderMap() {
+  if (!currentMapData) return;
+  emptyState.style.display = 'none';
+  container.style.display = 'block';
+
+  // 自动居中
+  const { nodes } = currentMapData;
+  const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  viewX = -cx;
+  viewY = -cy;
+
+  renderNodes();
+  renderEdges();
+}
+
+function worldToScreen(wx, wy) {
+  const cx = container.clientWidth / 2;
+  const cy = container.clientHeight / 2;
+  return { x: cx + (wx + viewX) * scale, y: cy + (wy + viewY) * scale };
+}
+
+function renderNodes() {
+  nodeLayer.innerHTML = '';
+  nodeElements = [];
+  currentMapData.nodes.forEach(n => {
+    const cfg = typeConfig[n.type] || typeConfig.poi;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'node-wrapper';
+    const icon = document.createElement('div');
+    icon.className = 'node-icon';
+    icon.innerHTML = `<svg width="${cfg.size}" height="${cfg.size}" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="10" fill="${cfg.color}" opacity="0.85"/>
+      <circle cx="16" cy="16" r="6" fill="${cfg.color}"/>
+    </svg>`;
+    wrapper.appendChild(icon);
+    const label = document.createElement('div');
+    label.className = 'node-label';
+    label.textContent = n.name;
+    wrapper.appendChild(label);
+    wrapper.addEventListener('click', e => { e.stopPropagation(); activeDetailNode = n; openDetail(n); });
+    nodeLayer.appendChild(wrapper);
+    nodeElements.push({ el: wrapper, node: n });
+  });
+  updatePositions();
+}
+
+function updatePositions() {
+  nodeElements.forEach(({ el, node }) => {
+    const p = worldToScreen(node.x, node.y);
+    el.style.left = p.x + 'px';
+    el.style.top = p.y + 'px';
+  });
+}
+
+function renderEdges() {
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = 'rgba(200,184,138,0.3)';
+  ctx.lineWidth = 1.5;
+  const nodeMap = {};
+  currentMapData.nodes.forEach(n => nodeMap[n.id] = n);
+  currentMapData.edges.forEach(e => {
+    const from = nodeMap[e.source], to = nodeMap[e.target];
+    if (!from || !to) return;
+    const p1 = worldToScreen(from.x, from.y);
+    const p2 = worldToScreen(to.x, to.y);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+  });
+}
+
+// ==================== 详情面板 ====================
+function openDetail(node) {
+  const cfg = typeConfig[node.type] || typeConfig.poi;
+  $('detail-header').innerHTML = `
+    <div class="detail-title">${escHtml(node.name)}</div>
+    <span class="detail-badge">${cfg.label}</span>
+  `;
+  $('detail-summary').textContent = node.summary || '（无描述）';
+  let bodyHtml = '';
+  for (const [key, label] of Object.entries(FIELD_LABELS)) {
+    const val = node[key];
+    if (!val || !String(val).trim()) continue;
+    bodyHtml += `<div class="detail-section">
+      <div class="detail-section-title">${label}</div>
+      <div class="detail-section-content">${escHtml(val)}</div>
+    </div>`;
+  }
+  $('detail-body').innerHTML = bodyHtml;
+  $('detail-overlay').classList.add('active');
+}
+
+$('detail-close').addEventListener('click', () => $('detail-overlay').classList.remove('active'));
+$('detail-overlay').addEventListener('click', e => { if (e.target.id === 'detail-overlay') $('detail-overlay').classList.remove('active'); });
+
+// ==================== 拖拽缩放 ====================
+container.addEventListener('mousedown', e => {
+  if (e.target.closest('.node-wrapper')) return;
+  isDragging = true;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  dragViewX = viewX; dragViewY = viewY;
+  container.classList.add('grabbing');
+});
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  viewX = dragViewX + (e.clientX - dragStartX) / scale;
+  viewY = dragViewY + (e.clientY - dragStartY) / scale;
+  updatePositions(); renderEdges();
+});
+window.addEventListener('mouseup', () => { isDragging = false; container.classList.remove('grabbing'); });
+container.addEventListener('wheel', e => {
+  e.preventDefault();
+  scale = Math.max(0.3, Math.min(3, scale * (e.deltaY > 0 ? 0.9 : 1.1)));
+  updatePositions(); renderEdges();
+}, { passive: false });
+window.addEventListener('resize', () => { if (currentMapData) { renderNodes(); renderEdges(); } });
+
+// ==================== 导出 ====================
+function getExportContent() {
+  if (!currentMapData) return null;
+  const data = {
+    mapData: {
+      title: currentMapData.title,
+      nodes: currentMapData.nodes,
+      edges: currentMapData.edges
+    }
+  };
+  return `var MAP_JSON_DATA = ${JSON.stringify(data, null, 2)};`;
+}
+
+$('export-btn').addEventListener('click', () => {
+  const content = getExportContent();
+  if (!content) return;
+  const safeTitle = (currentMapData.title || 'dungeon').replace(/[^\w\u4e00-\u9fa5]/g, '_');
+  const blob = new Blob([content], { type: 'text/javascript' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${safeTitle}_mapdata.js`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+$('copy-btn').addEventListener('click', async () => {
+  const content = getExportContent();
+  if (!content) return;
+  try {
+    await navigator.clipboard.writeText(content);
+    setProgress(100, '已复制到剪贴板');
+  } catch {
+    setProgress(100, '复制失败，请用导出', true);
+  }
+});
+
+$('generate-btn').addEventListener('click', generate);
+
+// ==================== 酒馆桥接 ====================
+let activeDetailNode = null;
+
+function showToast(msg, type = '') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type ? ' ' + type : '');
+  setTimeout(() => { t.className = ''; }, 2200);
+}
+
+// 通知父窗口（如果嵌入到底部状态栏 iframe 里）
+function notifyHost(type, payload) {
+  try {
+    window.parent.postMessage({ type, payload, source: 'dungeon_map' }, '*');
+  } catch (e) {}
+}
+
+// 调用酒馆 STscript 命令更新变量
+async function tavernSetVar(key, value) {
+  const targetWindow = window.parent || window;
+  const helper = targetWindow.TavernHelper;
+  if (!helper || !helper.triggerSlash) return false;
+  try {
+    const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
+    // /setvar 是聊天级变量；/setglobalvar 是全局
+    const escaped = jsonValue.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+    await helper.triggerSlash(`/setvar key=${key} "${escaped}"`);
+    return true;
+  } catch (e) {
+    console.warn('[子地图] triggerSlash 失败:', e);
+    return false;
+  }
+}
+
+// 把整张副本应用到聊天（让主AI知道副本结构）
+async function applyDungeonToChat() {
+  if (!currentMapData) return;
+
+  const summary = {
+    title: currentMapData.title,
+    nodeCount: currentMapData.nodes.length,
+    nodes: currentMapData.nodes.map(n => ({
+      id: n.id, name: n.name, type: n.type
+    })),
+    edges: currentMapData.edges
+  };
+
+  // 1. postMessage 通知父窗口
+  notifyHost('dungeon_applied', { dungeon: currentMapData });
+
+  // 2. 通过 STscript 写入聊天变量
+  const ok = await tavernSetVar('当前副本', summary);
+
+  if (ok) {
+    showToast('已应用到聊天变量「当前副本」', 'success');
+  } else {
+    // 降级：复制到剪贴板让用户手动处理
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(summary, null, 2));
+      showToast('已复制副本数据到剪贴板（请手动粘贴或配置酒馆桥接）', 'success');
+    } catch {
+      showToast('应用失败，请检查酒馆环境', 'error');
+    }
+  }
+}
+
+// 玩家点击节点后选择"进入此处"
+async function enterNode(node) {
+  if (!node || !currentMapData) return;
+
+  const payload = {
+    dungeonTitle: currentMapData.title,
+    node: {
+      id: node.id, name: node.name, type: node.type,
+      summary: node.summary || '',
+      monsters: node.monsters || '',
+      environmentFeatures: node.environmentFeatures || '',
+      secrets: node.secrets || ''
+    }
+  };
+
+  // 1. postMessage 通知父窗口（底部状态栏可在此更新位置变量）
+  notifyHost('dungeon_enter_node', payload);
+
+  // 2. 通过 STscript 更新场所位置变量 + 当前节点详情
+  let success = false;
+  // 更新位置·场所
+  success = await tavernSetVar('位置.场所', `${currentMapData.title}·${node.name}`) || success;
+  // 写入当前节点详情供主AI参考
+  success = await tavernSetVar('当前场所详情', payload.node) || success;
+
+  if (success) {
+    showToast(`已进入「${node.name}」，主AI已同步`, 'success');
+  } else {
+    // 降级：复制节点格式化文本
+    const text = `[进入] ${currentMapData.title}·${node.name}\n${node.summary || ''}`.trim();
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('已复制节点描述（酒馆桥接不可用，请手动粘贴）', 'success');
+    } catch {
+      showToast('同步失败，请检查酒馆环境', 'error');
+    }
+  }
+
+  $('detail-overlay').classList.remove('active');
+}
+
+// 复制节点描述
+async function copyNodeDesc(node) {
+  if (!node) return;
+  const lines = [
+    `# ${node.name}`,
+    node.summary || '',
+    node.monsters ? `\n[怪物] ${node.monsters}` : '',
+    node.environmentFeatures ? `\n[环境] ${node.environmentFeatures}` : '',
+    node.secrets ? `\n[GM] ${node.secrets}` : ''
+  ].filter(Boolean);
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    showToast('节点描述已复制', 'success');
+  } catch {
+    showToast('复制失败', 'error');
+  }
+}
+
+// 修改 openDetail 让它记录当前节点
+// activeDetailNode 已在 renderNodes 的 click 处理器里设置
+nodeLayer.addEventListener('click', () => {}, true);
+
+// 重写按钮事件
+$('apply-btn').addEventListener('click', applyDungeonToChat);
+$('detail-enter-btn').addEventListener('click', () => enterNode(activeDetailNode));
+$('detail-copy-btn').addEventListener('click', () => copyNodeDesc(activeDetailNode));
+</script>
+</body>
+</html>
