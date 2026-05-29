@@ -273,17 +273,27 @@ iconify-icon { display:inline-block; width:1em; height:1em; line-height:1; }
 
 <script>
 // ==================== 节点类型配置 ====================
+// 按"功能语义"分类（生成器据此给每个节点打 type），跨主题通用——
+// 不管是茶楼、官邸、集市还是古墓、敌营，节点扮演的"角色"都逃不出这几类。
+// 配色克制：绿=入口，金=出口/宝藏(目标)，红=战斗，橙=据点/险地(警示)，中性金=枢纽/发现(通行与探索)。
+const NC_NEUTRAL = '#c8b88a';  // 中性暖金（主色调）
+const ICON_SIZE = 22;          // 图标统一尺寸
 const typeConfig = {
-  waystation: { size:24, color:'#f0e4c4', label:'入口', icon:'game-icons:gate' },
-  ruins:      { size:22, color:'#c79a4b', label:'废墟', icon:'game-icons:broken-wall' },
-  dungeon:    { size:26, color:'#e07050', label:'战斗区', icon:'game-icons:crossed-swords' },
-  temple:     { size:24, color:'#a29bfe', label:'祭坛', icon:'game-icons:greek-temple' },
-  mine:       { size:23, color:'#d0a050', label:'矿道', icon:'game-icons:mining' },
-  cemetery:   { size:23, color:'#9aa6b2', label:'墓室', icon:'game-icons:tombstone' },
-  camp:       { size:24, color:'#e0a060', label:'据点', icon:'game-icons:campfire' },
-  poi:        { size:22, color:'#a8d8ea', label:'兴趣点', icon:'game-icons:scroll-unfurled' },
-  portal:     { size:25, color:'#ffd700', label:'出口', icon:'game-icons:portal' },
+  entrance:   { color:'#5fb87a', label:'入口',   icon:'game-icons:gate' },            // 绿：进入此地的起点
+  exit:       { color:'#ffcf4d', label:'出口',   icon:'game-icons:portal' },          // 金：离开/通往目标的终点
+  hub:        { color:NC_NEUTRAL, label:'枢纽',   icon:'game-icons:crossroad' },       // 连接多路的过渡区/开阔地
+  combat:     { color:'#e2574c', label:'战斗',   icon:'game-icons:crossed-swords' },  // 红：会爆发战斗/首领
+  stronghold: { color:'#e08a3c', label:'据点',   icon:'game-icons:barracks' },        // 橙：某方控制/驻守之地
+  discovery:  { color:NC_NEUTRAL, label:'兴趣点', icon:'game-icons:magnifying-glass' },// 线索/叙事/谜题/奇遇
+  hazard:     { color:'#e0a040', label:'险地',   icon:'game-icons:spikes' },          // 橙：陷阱/机关/环境危险
+  treasure:   { color:'#ffcf4d', label:'宝藏',   icon:'game-icons:open-treasure-chest' },// 金：财货/关键物资/目标物
 };
+// 旧类型名 → 新功能类型（兼容历史缓存与模型偶发的旧用词）
+const TYPE_ALIAS = {
+  waystation:'entrance', portal:'exit', dungeon:'combat', camp:'stronghold',
+  poi:'discovery', ruins:'hazard', temple:'discovery', cemetery:'discovery', mine:'discovery',
+};
+function resolveType(t) { return typeConfig[t] ? t : (typeConfig[TYPE_ALIAS[t]] ? TYPE_ALIAS[t] : 'discovery'); }
 
 const FIELD_LABELS = {
   monsters: '怪物',
@@ -480,16 +490,17 @@ const COMMON_HEADER = `[TASK CHANGED] 进入分析模式：本次暂停角色扮
 
 世界观、怪物体系、等级强度对标、禁忌词汇等设定请参考已激活的世界书内容。
 
-【节点 type 取值】
-- waystation：入口、安全点
-- ruins：废墟、坍塌区
-- dungeon：主战斗区、Boss 房
-- temple：祭坛、仪式场所
-- mine：矿道、挖掘区
-- cemetery：墓室
-- camp：敌人据点
-- poi：谜题房、线索房、叙事房
-- portal：出口、密道
+【节点 type 取值——按"功能角色"分类，与场所主题无关，任何题材通用】
+先想"这个节点在探索流程里扮演什么角色"，再从下面八类里选最贴切的一个：
+- entrance：入口、起点（玩家从这里进入此地）
+- exit：出口、终点、通往下一程的去处
+- hub：枢纽/通衢——连接多条路径的过渡区或开阔地（大堂、中庭、广场、廊道交汇、岔路口）
+- combat：会爆发战斗、敌人盘踞、首领坐镇之处
+- stronghold：某方势力控制、驻守、戒备森严之地（营地、哨卡、总舵、守卫房）
+- discovery：兴趣点——可调查的线索、叙事、谜题、奇遇、可交互的发现点（最常用的通用类）
+- hazard：险地——陷阱、机关、毒瘴、塌方、不稳定等环境危险为主之处
+- treasure：要地——存放财货、关键物资、目标物、宝藏之处
+注：type 描述的是"功能"，不是"场所外观"。一间茶楼雅间可能是 discovery，也可能是 combat；一座古墓主室可能是 treasure 或 combat。按它在本次探索中的作用来定。拿不准就用 discovery。
 
 【节点命名规则（极其重要）】
 简洁、具体、有画面感的中文名称。让玩家一眼就能理解这是什么地方。
@@ -505,9 +516,8 @@ const COMMON_HEADER = `[TASK CHANGED] 进入分析模式：本次暂停角色扮
 - 氤氲缭绕之所、晦明交错之厅（生僻晦涩）
 
 【连接数硬性上限】
-- waystation（入口/枢纽厅）：最多 4 条边
-- dungeon / camp / poi：最多 3 条边
-- temple / cemetery / mine / ruins：最多 3 条边
+- entrance / hub（入口/枢纽）：最多 4 条边
+- 其余类型（combat / stronghold / discovery / hazard / treasure / exit）：最多 3 条边
 - entrance 只能作为 source（不能有入边）
 - exit 只能作为 target（入边 1-3，不能有出边）
 
@@ -574,7 +584,7 @@ ${contextBlock}${HISTORY_BLOCK(history)}
 {
   "title": "${place}",
   "nodes": [
-    {"id": "entrance", "name": "正门", "type": "waystation"},
+    {"id": "entrance", "name": "正门", "type": "entrance"},
     {"id": "...", "name": "...", "type": "..."}
   ]
 }`;
@@ -935,13 +945,13 @@ function renderNodes() {
   nodeLayer.innerHTML = '';
   nodeElements = [];
   currentMapData.nodes.forEach(n => {
-    const cfg = typeConfig[n.type] || typeConfig.poi;
+    const cfg = typeConfig[resolveType(n.type)];
     const wrapper = document.createElement('div');
     wrapper.className = 'node-wrapper';
     const icon = document.createElement('div');
     icon.className = 'node-icon';
-    icon.innerHTML = `<span class="node-disc" style="--nc:${cfg.color}; box-shadow:0 2px 6px rgba(0,0,0,0.55), 0 0 9px ${cfg.color}55, inset 0 0 6px rgba(0,0,0,0.5);">
-      <iconify-icon icon="${cfg.icon || 'game-icons:scroll-unfurled'}" noobserver style="font-size:${cfg.size}px;"></iconify-icon>
+    icon.innerHTML = `<span class="node-disc" style="--nc:${cfg.color}; box-shadow:0 2px 6px rgba(0,0,0,0.5), inset 0 0 5px rgba(0,0,0,0.45);">
+      <iconify-icon icon="${cfg.icon || 'game-icons:magnifying-glass'}" noobserver style="font-size:${ICON_SIZE}px;"></iconify-icon>
     </span>`;
     wrapper.appendChild(icon);
     const label = document.createElement('div');
@@ -985,7 +995,7 @@ function renderEdges() {
 
 // ==================== 详情面板 ====================
 function openDetail(node) {
-  const cfg = typeConfig[node.type] || typeConfig.poi;
+  const cfg = typeConfig[resolveType(node.type)];
   $('detail-header').innerHTML = `
     <div class="detail-title">${escHtml(node.name)}</div>
     <span class="detail-badge">${cfg.label}</span>
@@ -1029,6 +1039,23 @@ container.addEventListener('wheel', e => {
 }, { passive: false });
 window.addEventListener('resize', () => { if (currentMapData) { renderNodes(); renderEdges(); } });
 
+// 监听地图容器自身尺寸变化：收起/展开左侧生成器面板会改变地图区宽度（且带 0.28s 过渡动画），
+// 这类 flex 布局变化不会触发 window 的 resize 事件。用 ResizeObserver 实时跟随，
+// 过渡动画期间会连续回调，节点与连线即可平滑重新定位。
+if (window.ResizeObserver) {
+  let _rszRaf = 0;
+  const _ro = new ResizeObserver(() => {
+    if (!currentMapData) return;
+    if (_rszRaf) return;
+    _rszRaf = requestAnimationFrame(() => {
+      _rszRaf = 0;
+      updatePositions();
+      renderEdges();
+    });
+  });
+  _ro.observe($('map-area'));
+}
+
 // ==================== 导出 ====================
 // 生成「副本地图」条目（玩家可见/概览）的可读文本：结构 + 公开摘要，不含任何 GM 机密
 function buildWorldbookPublicText() {
@@ -1036,7 +1063,7 @@ function buildWorldbookPublicText() {
   const { title, nodes, edges } = currentMapData;
   const nodeMap = {};
   nodes.forEach(n => { nodeMap[n.id] = n; });
-  const typeName = t => (typeConfig[t] || {}).label || t || '节点';
+  const typeName = t => typeConfig[resolveType(t)].label;
 
   let s = `【当前副本地图：${title}】\n`;
   s += `共 ${nodes.length} 个节点，${edges.length} 条通路。以下为玩家可见的地图概览（不含隐藏信息），供主AI描述场景、推进探索。\n\n`;
@@ -1060,7 +1087,7 @@ function buildWorldbookPublicText() {
 function buildWorldbookSecretText() {
   if (!currentMapData) return '';
   const { title, nodes } = currentMapData;
-  const typeName = t => (typeConfig[t] || {}).label || t || '节点';
+  const typeName = t => typeConfig[resolveType(t)].label;
   const withSecrets = nodes.filter(n => n.secrets && String(n.secrets).trim());
 
   let s = `【副本地图·GM机密：${title}】\n`;
