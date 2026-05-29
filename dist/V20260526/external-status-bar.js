@@ -9174,11 +9174,15 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
 
 /* ========== Fusion Card 弹窗样式 (popup_final风格) ========== */
 #${SCRIPT_ID}-popup.fusion-popup-overlay {
-    position: absolute;
+    /* 直接锚定可视视口，规避部分浏览器 position:absolute 嵌套 fixed 父级时把 100% 解析成布局视口的问题 */
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
+    /* 显式高度兜底，老内核取 100vh，新内核走 100dvh */
+    height: 100vh;
+    height: 100dvh;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
@@ -9200,7 +9204,10 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
 /* Fusion Card 主体 */
 #${SCRIPT_ID}-panel .fusion-card {
     width: min(300px, 100%);
+    /* 多级回退：老内核走 100% / 100vh，新内核走 100dvh，避免地址栏导致的可视视口与布局视口错位 */
     max-height: calc(100% - 32px - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100vh - 32px - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 32px - env(safe-area-inset-bottom, 0px));
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 15px 40px rgba(59, 66, 89, 0.15);
@@ -9512,6 +9519,8 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     #${SCRIPT_ID}-panel .fusion-card {
         width: 100%;
         max-height: calc(100% - 24px - env(safe-area-inset-bottom, 0px));
+        max-height: calc(100vh - 24px - env(safe-area-inset-bottom, 0px));
+        max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
     }
     #${SCRIPT_ID}-panel .f-actions {
         padding-left: 12px;
