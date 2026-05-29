@@ -488,6 +488,14 @@ body::after {
 </div>
 
 <script>
+// ============ EMBED / SPAWN-SELECT MODE（与琥珀之剑地图一致的原生能力）============
+// 作为开局页 iframe 时进入"出生点选择"模式：点击地点不再弹详情，而是回传出生点给父页面。
+// 模式来源：直接加载用 URL ?mode=spawn-select；开局页预取注入 srcdoc 时用 __JIUZHOU_MAP_EMBED_CONFIG__。
+const _jzPageParams = new URLSearchParams(window.location.search);
+const JIUZHOU_EMBED_CONFIG = window.__JIUZHOU_MAP_EMBED_CONFIG__ || {};
+const MAP_MODE = _jzPageParams.get('mode') || String(JIUZHOU_EMBED_CONFIG.mode || '').trim() || 'browse';
+const IS_SPAWN_SELECT_MODE = MAP_MODE === 'spawn-select';
+
 // ============ TYPE CONFIG ============
 const typeConfig = {
   capital:    { size: 60, label: '两京', labelSize: 18, color: '#f2e2b0', tier: 'major' },
@@ -822,7 +830,8 @@ function renderNodes() {
     wrapper.addEventListener('click', (ev) => {
       ev.stopPropagation();
       tooltip.style.display = 'none';
-      openDetail(n);
+      if (IS_SPAWN_SELECT_MODE) emitSpawnSelection(n);
+      else openDetail(n);
     });
 
     nodeLayer.appendChild(wrapper);
@@ -1023,6 +1032,42 @@ function drawEdgeLabels(drawList) {
     placed.push({ x: mx, y: my, w: pw, h: ph, text });
   });
   ctx.restore();
+}
+
+// ============ SPAWN SELECT（出生点选择，仿琥珀之剑原生能力）============
+const SPAWN_CHANNEL = 'jiuzhou-spawn-map';
+
+// 法尸禁地为敌对污染区，不能作为出生点
+function getSpawnBlockedReason(node) {
+  if (!node) return '';
+  if (node.type === 'faction') return '法尸禁地是敌对污染区，不能作为出生点。';
+  return '';
+}
+
+function buildSpawnSelectionPayload(node) {
+  const name = node.name || '';
+  return {
+    名称: name, 大陆: '九州', 区域: name, 场所: name,
+    层级: node.tier || '', 地区等级: node.dangerLevel || '', 危险等级: node.dangerLevel || '',
+    地貌特征: node.landscape || node.summary || '',
+    聚落描述: node.summary || '',
+    周边威胁: node.threats || '',
+    地点类型: (typeConfig[node.type] || {}).label || node.type || '',
+    节点ID: node.id || '', 地图层级: 0
+  };
+}
+
+function emitSpawnSelection(node) {
+  const payload = buildSpawnSelectionPayload(node);
+  if (!payload.名称) return;
+  const reason = getSpawnBlockedReason(node);
+  try {
+    if (reason) {
+      window.parent.postMessage({ channel: SPAWN_CHANNEL, type: 'jiuzhou_spawn_blocked', spawn: payload, reason }, '*');
+    } else {
+      window.parent.postMessage({ channel: SPAWN_CHANNEL, type: 'jiuzhou_spawn_selected', spawn: payload }, '*');
+    }
+  } catch (e) {}
 }
 
 // ============ DETAIL MODAL ============
@@ -1273,14 +1318,27 @@ function updatePlayerLocation() {
 }
 
 window.addEventListener('message', (e) => {
-  if (e.data && e.data.type === 'mvu_location' && e.data.位置) {
-    _mvuLocation = e.data.位置;
+  const d = e.data;
+  if (!d) return;
+  if (d.type === 'mvu_location' && d.位置) {
+    _mvuLocation = d.位置;
+    updatePlayerLocation();
+  }
+  // 开局页回传上次选中的出生点，用本地玩家定位机制高亮该节点
+  if (d.type === 'jiuzhou_spawn_focus' && d.spawn) {
+    _mvuLocation = {
+      场所: d.spawn.场所 || d.spawn.名称 || '',
+      区域: d.spawn.区域 || '',
+      大陆: d.spawn.大陆 || ''
+    };
     updatePlayerLocation();
   }
 });
 
-// 通知宿主本页已就绪，请求立即推送一次位置
+// 通知宿主本页已就绪：mvu 位置宿主（底部状态栏）用无 channel 版；
+// 出生点宿主（开局页）用带 channel 版，并带上当前模式。
 try { window.parent.postMessage({ type: 'map_ready' }, '*'); } catch (e) {}
+try { window.parent.postMessage({ channel: SPAWN_CHANNEL, type: 'map_ready', mode: MAP_MODE }, '*'); } catch (e) {}
 
 // ============ INIT ============
 function init() {
