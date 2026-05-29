@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>子地图生成器</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; background:#1a1a2e; color:#c8b88a; }
@@ -100,6 +101,14 @@ html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; backgro
 }
 .node-wrapper:hover { filter:brightness(1.3) drop-shadow(0 0 8px rgba(200,184,138,0.5)); transform:translate(-50%,-50%) scale(1.05); }
 .node-icon { display:flex; align-items:center; justify-content:center; }
+iconify-icon { display:inline-block; width:1em; height:1em; line-height:1; }
+.node-disc {
+  width:40px; height:40px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 32% 28%, rgba(48,54,78,0.96), rgba(11,14,24,0.97));
+  border:2px solid var(--nc, #c8b88a);
+}
+.node-disc iconify-icon { display:block; color:var(--nc, #c8b88a); }
 .node-label {
   margin-top:4px; white-space:nowrap; text-align:center; color:#f0e8d0;
   font-weight:700; font-size:12px; text-shadow:1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
@@ -265,15 +274,15 @@ html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; backgro
 <script>
 // ==================== 节点类型配置 ====================
 const typeConfig = {
-  waystation: { size:22, color:'#f0e4c4', label:'入口' },
-  ruins:      { size:20, color:'#8b6914', label:'废墟' },
-  dungeon:    { size:24, color:'#e07050', label:'战斗区' },
-  temple:     { size:22, color:'#a29bfe', label:'祭坛' },
-  mine:       { size:20, color:'#b88a44', label:'矿道' },
-  cemetery:   { size:20, color:'#7c8a99', label:'墓室' },
-  camp:       { size:22, color:'#d49060', label:'据点' },
-  poi:        { size:20, color:'#a8d8ea', label:'兴趣点' },
-  portal:     { size:22, color:'#ffd700', label:'出口' },
+  waystation: { size:24, color:'#f0e4c4', label:'入口', icon:'game-icons:gate' },
+  ruins:      { size:22, color:'#c79a4b', label:'废墟', icon:'game-icons:broken-wall' },
+  dungeon:    { size:26, color:'#e07050', label:'战斗区', icon:'game-icons:crossed-swords' },
+  temple:     { size:24, color:'#a29bfe', label:'祭坛', icon:'game-icons:greek-temple' },
+  mine:       { size:23, color:'#d0a050', label:'矿道', icon:'game-icons:mining' },
+  cemetery:   { size:23, color:'#9aa6b2', label:'墓室', icon:'game-icons:tombstone' },
+  camp:       { size:24, color:'#e0a060', label:'据点', icon:'game-icons:campfire' },
+  poi:        { size:22, color:'#a8d8ea', label:'兴趣点', icon:'game-icons:scroll-unfurled' },
+  portal:     { size:25, color:'#ffd700', label:'出口', icon:'game-icons:portal' },
 };
 
 const FIELD_LABELS = {
@@ -931,10 +940,9 @@ function renderNodes() {
     wrapper.className = 'node-wrapper';
     const icon = document.createElement('div');
     icon.className = 'node-icon';
-    icon.innerHTML = `<svg width="${cfg.size}" height="${cfg.size}" viewBox="0 0 32 32">
-      <circle cx="16" cy="16" r="10" fill="${cfg.color}" opacity="0.85"/>
-      <circle cx="16" cy="16" r="6" fill="${cfg.color}"/>
-    </svg>`;
+    icon.innerHTML = `<span class="node-disc" style="--nc:${cfg.color}; box-shadow:0 2px 6px rgba(0,0,0,0.55), 0 0 9px ${cfg.color}55, inset 0 0 6px rgba(0,0,0,0.5);">
+      <iconify-icon icon="${cfg.icon || 'game-icons:scroll-unfurled'}" noobserver style="font-size:${cfg.size}px;"></iconify-icon>
+    </span>`;
     wrapper.appendChild(icon);
     const label = document.createElement('div');
     label.className = 'node-label';
