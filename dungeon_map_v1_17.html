@@ -827,22 +827,21 @@ function finalizeHiddenNodes(nodes, edges, want) {
   if (!parentId) { delete hidden.hidden; return; }   // 无相邻普通节点 → 降级
   hidden.parentId = parentId;
   hidden.revealed = false;
+  if (byId[parentId]) placeHiddenNearParent(hidden, byId[parentId], nodes);
+}
 
-  // 重新定位：不沿用分层布局给隐藏节点的槽位（那会让"?"飘到与父节点无关的格子，造成错位）。
-  // 改成贴着父节点、并朝"地图外侧"偏移，使"?"始终紧挨父节点、落在空白处。
-  const parentNode = byId[parentId];
-  if (parentNode) {
-    const vis = nodes.filter(n => !n.hidden);
-    const n = vis.length || 1;
-    const cx = vis.reduce((s, m) => s + (m.x || 0), 0) / n;
-    const cy = vis.reduce((s, m) => s + (m.y || 0), 0) / n;
-    let dx = parentNode.x - cx, dy = parentNode.y - cy;
-    let len = Math.hypot(dx, dy);
-    if (len < 1) { dx = 0; dy = 1; len = 1; }   // 父节点恰在中心 → 默认朝下
-    const DIST = 120;
-    hidden.x = parentNode.x + (dx / len) * DIST;
-    hidden.y = parentNode.y + (dy / len) * DIST;
-  }
+// 把隐藏节点放到"贴着父节点、朝地图外侧偏移"的位置——不沿用分层布局给它的槽位
+// （那会让"?"飘到与父节点无关的格子，造成错位）。渲染时也会再算一次，把缓存旧图一并纠正。
+function placeHiddenNearParent(hidden, parentNode, nodes) {
+  const vis = nodes.filter(m => m !== hidden && !(m.hidden && !m.revealed));
+  const k = vis.length || 1;
+  const cx = vis.reduce((s, m) => s + (m.x || 0), 0) / k;
+  const cy = vis.reduce((s, m) => s + (m.y || 0), 0) / k;
+  let dx = (parentNode.x || 0) - cx, dy = (parentNode.y || 0) - cy;
+  let len = Math.hypot(dx, dy);
+  if (len < 1) { dx = 0; dy = 1; len = 1; }   // 父节点恰在中心 → 默认朝下
+  hidden.x = (parentNode.x || 0) + (dx / len) * 120;
+  hidden.y = (parentNode.y || 0) + (dy / len) * 120;
 }
 
 function filterValidEdges(nodes, edges) {
@@ -1059,6 +1058,9 @@ function renderNodes() {
     // 未揭示的隐藏节点：平时完全不画；仅当玩家就在其父节点时，以"?"占位出现，供探查
     if (n.hidden && !n.revealed) {
       if (curId && n.parentId === curId) {
+        // 每次渲染都按父节点现算"?"的位置：纠正缓存旧图的错位，且与下面的虚线连用同一坐标
+        const parentNode = currentMapData.nodes.find(p => p.id === n.parentId);
+        if (parentNode) placeHiddenNearParent(n, parentNode, currentMapData.nodes);
         const wrapper = document.createElement('div');
         wrapper.className = 'node-wrapper mystery';
         const icon = document.createElement('div');
