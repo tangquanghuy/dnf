@@ -533,17 +533,21 @@ const COMMON_HEADER = `[TASK CHANGED] 进入分析模式：本次暂停角色扮
 注：type 描述的是"功能"，不是"场所外观"。一间茶楼雅间可能是 discovery，也可能是 combat；一座古墓主室可能是 treasure 或 combat。按它在本次探索中的作用来定。拿不准就用 discovery。
 
 【节点命名规则（极其重要）】
-简洁、具体、有画面感的中文名称。让玩家一眼就能理解这是什么地方。
+像现实里人们对一个地方的日常叫法那样命名：短、直白、一眼懂。
 
-好的命名：
-- 朱漆大门、东厢书房、半塌门楼、油灯走廊
-- 刑房、密室暗格、天井水井、地窖入口
-- 百器架、灵位堂、碎瓷废墟、棺椁阶
+硬性要求：
+- 长短参差：以 2-4 字为主，整张图的节点名必须有长有短、结构各异，严禁所有节点都是同样字数或同一种结构。
+- 最多带一个修饰词：「（修饰）+ 地名」即可，如 后厨、老井、东厢、破后门。严禁把两三个形容词叠起来凑字数。
+- 说人话，别堆辞藻：苔痕、积水、霉味这类氛围细节写进 summary，不要塞进名字。
+
+好的命名（注意长短和结构都不一样）：
+- 正门、后厨、老井、天井、木廊、柴房、后门
+- 东厢书房、半塌门楼、地窖入口、刑房、密室暗格
 
 禁止的命名：
-- 缥缈虚无之境、寂灭轮回殿堂（过度文艺）
+- 生苔天井空地、滑腻绿苔老井、斑驳漆皮木廊、渗水暗绿墙根（叠形容词凑字、全员等长，最忌讳）
+- 缥缈虚无之境、晦明交错之厅（过度文艺、生僻晦涩）
 - 第一房间、走廊 A、地点 7（无信息量）
-- 氤氲缭绕之所、晦明交错之厅（生僻晦涩）
 
 【连接数硬性上限】
 - entrance / hub（入口/枢纽）：最多 4 条边
@@ -1153,28 +1157,31 @@ function buildWorldbookPublicText() {
   nodes.forEach(n => { nodeMap[n.id] = n; });
   const typeName = t => typeConfig[resolveType(t)].label;
 
+  // 邻接表（双向）：每个节点直接相连的其他节点名——主AI据此判断"能否一步抵达"，
+  // 也是替代旧"通路"清单的直观写法（把"从这能去哪"直接挂在每个节点下）。
+  const adj = {};
+  nodes.forEach(n => { adj[n.id] = []; });
+  edges.forEach(e => {
+    if (adj[e.source] && nodeMap[e.target]) adj[e.source].push(nodeMap[e.target].name);
+    if (adj[e.target] && nodeMap[e.source]) adj[e.target].push(nodeMap[e.source].name);
+  });
+
   let s = `【当前副本地图：${title}】\n`;
-  s += `共 ${nodes.length} 个节点，${edges.length} 条通路。以下为玩家可见的地图概览（不含隐藏信息），供主AI描述场景、推进探索。\n\n`;
-  s += `## 移动与探索规则（主AI必须严格遵守）\n`;
-  s += `- 玩家只能沿下方"通路"中列出的直接连接，在相邻节点之间移动；禁止瞬移，禁止一步跳到与当前位置不相连的节点。\n`;
-  s += `- 玩家提出前往某处时，先依据「场所」变量判断其当前所在节点：场所为「${title}${NODE_SEP}节点名」格式时，末段节点名即当前位置；若场所仅为「${title}」或只到建筑名，则视为尚在入口、未真正进入任何节点。\n`;
-  s += `- 再对照"通路"检查目标节点是否与当前节点直接相连，判断"从当前位置直接前往该节点"是否合理：\n`;
-  s += `  · 直接相连 → 合理，可前往并演绎该节点内容。\n`;
-  s += `  · 不相连 → 不合理，玩家无法一步抵达，**改为先移动到最合理(通常与玩家所在位置邻近)的节点**。必须沿通路依次经过中间节点，途经的战斗、险地等节点要如实演绎，不得跳过、略过或无视沿途的敌人与危险直接抵达目标。\n`;
-  s += `- 玩家位置每次变化后，将「场所」更新为「${title}${NODE_SEP}当前节点名」格式（节点名须取自下方节点列表，与地图保持一致）。\n\n`;
+  s += `主AI据此描述场景，并约束玩家在副本内的移动。\n\n`;
+  s += `## 移动规则\n`;
+  s += `- 玩家当前所在节点 = 「场所」末段：场所为「${title}${NODE_SEP}节点名」时，节点名即当前位置；若场所只到「${title}」，则在入口、尚未进入任何节点。\n`;
+  s += `- 玩家只能移动到当前节点"相邻可达"列出的节点（见下方每个节点末尾），不能瞬移到不相邻的节点。\n`;
+  s += `- 想去的地方若不相邻：先移动到通往目标、且离当前位置最近的相邻节点，再逐节点推进；途经的战斗、险地等必须如实演绎，不得跳过或绕开。\n`;
+  s += `- 玩家位置变化后，把「场所」更新为「${title}${NODE_SEP}新节点名」（节点名取自下方列表）。\n\n`;
   s += `## 节点\n`;
   nodes.forEach(n => {
     s += `■ ${n.name}（${typeName(n.type)}）\n`;
-    if (n.summary) s += `  · 概况：${n.summary}\n`;
-    if (n.hook) s += `  · 看点：${n.hook}\n`;
-    if (n.monsters) s += `  · 怪物：${n.monsters}\n`;
-    if (n.environmentFeatures) s += `  · 环境：${n.environmentFeatures}\n`;
-  });
-  s += `\n## 通路\n`;
-  edges.forEach(e => {
-    const a = nodeMap[e.source]?.name || e.source;
-    const b = nodeMap[e.target]?.name || e.target;
-    s += `■ ${a} → ${b}${e.label ? '（' + e.label + '）' : ''}\n`;
+    if (n.summary) s += `  概况：${n.summary}\n`;
+    if (n.hook) s += `  看点：${n.hook}\n`;
+    if (n.monsters) s += `  怪物：${n.monsters}\n`;
+    if (n.environmentFeatures) s += `  环境：${n.environmentFeatures}\n`;
+    const nb = [...new Set(adj[n.id] || [])];
+    s += `  相邻可达：${nb.length ? nb.join('、') : '（无）'}\n`;
   });
   return s.trim();
 }
