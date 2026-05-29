@@ -114,6 +114,22 @@ iconify-icon { display:inline-block; width:1em; height:1em; line-height:1; }
   font-weight:700; font-size:12px; text-shadow:1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
   background:rgba(10,10,20,0.85); padding:2px 8px; border-radius:3px;
 }
+/* 当前位置高亮：发光环 + "你在这里"徽标 */
+.node-wrapper.current { z-index:20; }
+.node-wrapper.current .node-disc {
+  border-color:#ffcf4d;
+  box-shadow:0 0 0 3px rgba(255,207,77,0.55), 0 0 16px 5px rgba(255,207,77,0.75) !important;
+  animation:nodeHerePulse 1.8s ease-in-out infinite;
+}
+@keyframes nodeHerePulse {
+  0%,100% { box-shadow:0 0 0 3px rgba(255,207,77,0.45), 0 0 12px 3px rgba(255,207,77,0.55) !important; }
+  50%     { box-shadow:0 0 0 4px rgba(255,207,77,0.7), 0 0 20px 7px rgba(255,207,77,0.95) !important; }
+}
+.node-here-badge {
+  margin-top:3px; font-size:10px; line-height:1; color:#1a1a2e; font-weight:700;
+  background:#ffcf4d; padding:2px 7px; border-radius:8px; white-space:nowrap;
+  box-shadow:0 1px 4px rgba(0,0,0,0.5);
+}
 
 #empty-state {
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
@@ -203,7 +219,6 @@ iconify-icon { display:inline-block; width:1em; height:1em; line-height:1; }
     <div id="ctx-banner" style="margin-bottom:14px; padding:10px 12px; background:rgba(108,92,231,0.1); border:1px solid rgba(108,92,231,0.25); border-radius:8px; font-size:12px; line-height:1.7;">
       <div style="color:#8a7a5a; font-size:11px; font-weight:600; margin-bottom:4px;">将根据当前剧情自动生成</div>
       <div id="ctx-location">所在地点：<span style="color:#e8dcc0;">读取中…</span></div>
-      <div id="ctx-level">玩家等级：<span style="color:#e8dcc0;">读取中…</span></div>
       <button id="ctx-refresh" style="margin-top:6px; padding:3px 10px; background:rgba(200,184,138,0.1); color:#c8b88a; border:1px solid rgba(200,184,138,0.2); border-radius:5px; font-size:11px; cursor:pointer; font-family:inherit;">刷新上下文</button>
     </div>
 
@@ -317,6 +332,10 @@ let currentMapData = null;
 let viewX = 0, viewY = 0, scale = 1.0;
 let isDragging = false, dragStartX = 0, dragStartY = 0, dragViewX = 0, dragViewY = 0;
 let nodeElements = [];
+
+// 副本内"建筑·节点"格式的分隔符（发送文本里恒用此符拼出 {title}·{节点名}）。
+// 解析时对 · 与 ・ 都兼容，并 trim 每段，所以宿主写不写空格都能匹配。
+const NODE_SEP = '·';
 
 // ==================== DOM ====================
 const $ = id => document.getElementById(id);
@@ -450,19 +469,19 @@ async function loadHostContext() {
     hostContext = null;
   }
   renderContextBanner();
+  // 拿到最新场所后，尽力而为地校准当前节点（能对上就白赚同步，对不上不影响本地点击追踪）
+  calibrateCurrentNodeFromContext();
   return hostContext;
 }
 
 function renderContextBanner() {
-  const loc = $('ctx-location'), lv = $('ctx-level');
-  if (!loc || !lv) return;
+  const loc = $('ctx-location');
+  if (!loc) return;
   if (hostContext) {
     const place = hostContext.位置完整 || hostContext.场所 || '（未知，将由 AI 依据剧情推断）';
     loc.innerHTML = `所在地点：<span style="color:#e8dcc0;">${escHtml(place)}</span>`;
-    lv.innerHTML = `玩家等级：<span style="color:#e8dcc0;">${escHtml(String(hostContext.level || 1))} 级</span>`;
   } else {
     loc.innerHTML = `所在地点：<span style="color:#ff8090;">未连接酒馆（将仅凭补充说明生成）</span>`;
-    lv.innerHTML = `玩家等级：<span style="color:#e8dcc0;">30 级（默认）</span>`;
   }
 }
 
@@ -968,6 +987,7 @@ function worldToScreen(wx, wy) {
 function renderNodes() {
   nodeLayer.innerHTML = '';
   nodeElements = [];
+  const curId = currentMapData.currentNodeId;
   currentMapData.nodes.forEach(n => {
     const cfg = typeConfig[resolveType(n.type)];
     const wrapper = document.createElement('div');
@@ -982,11 +1002,43 @@ function renderNodes() {
     label.className = 'node-label';
     label.textContent = n.name;
     wrapper.appendChild(label);
+    if (curId && n.id === curId) {
+      wrapper.classList.add('current');
+      const here = document.createElement('div');
+      here.className = 'node-here-badge';
+      here.textContent = '你在这里';
+      wrapper.appendChild(here);
+    }
     wrapper.addEventListener('click', e => { e.stopPropagation(); activeDetailNode = n; openDetail(n); });
     nodeLayer.appendChild(wrapper);
     nodeElements.push({ el: wrapper, node: n });
   });
   updatePositions();
+}
+
+// 设为当前位置：点击"探索此处"时本地立即高亮（可靠、零依赖），并持久化到缓存
+function setCurrentNode(nodeId, { persist = true } = {}) {
+  if (!currentMapData || !nodeId) return;
+  if (!currentMapData.nodes.some(n => n.id === nodeId)) return;
+  if (currentMapData.currentNodeId === nodeId) return;
+  currentMapData.currentNodeId = nodeId;
+  if (persist) saveMapCache();
+  if (container.style.display !== 'none') renderNodes();
+}
+
+// 尽力而为地用宿主「场所」校准当前节点：
+// 把场所按 · / ・ 切分并 trim，取最后一段与节点名精确比对。
+//   带分隔符且能匹配到某节点 → 覆盖本地猜测（这就是"直接拿场所"的免费红利）；
+//   只有建筑名（无分隔符）或最后一段对不上 → 判定在入口/尚未进入，保留本地点击追踪结果不动。
+function calibrateCurrentNodeFromContext() {
+  if (!currentMapData || !hostContext) return;
+  const place = hostContext.场所 || hostContext.位置完整 || '';
+  if (!place) return;
+  const segs = String(place).split(/[·・]/).map(s => s.trim()).filter(Boolean);
+  if (segs.length < 2) return;            // 没有分隔符 → 还在整栋/入口，不覆盖
+  const last = segs[segs.length - 1];
+  const matched = currentMapData.nodes.find(n => n.name === last);
+  if (matched) setCurrentNode(matched.id);
 }
 
 function updatePositions() {
@@ -1260,21 +1312,28 @@ async function tavernSendMessage(text) {
   return await callHostRPC('send_message', { text }, 15000);
 }
 
-// 玩家点击节点后选择"探索此处"：把「探索xxx」写入酒馆聊天框（不自动发送），
-// 与行动选项一致，由玩家自行确认后再点击发送。「探索xxx」会由世界书
-// 「副本地图」词条的节点名关键词触发激活，主AI据此推进探索
+// 玩家点击节点后选择"探索此处"：把带显式指令的「探索xxx」写入酒馆聊天框（不自动发送），
+// 由玩家自行确认后再点击发送。文本固定为
+//   探索{节点名}（请将场所更新为「{title}·{节点名}」）
+// —— 节点名置于最前，照常触发世界书「副本地图/GM机密」的关键词；
+//    显式指令让主AI把"建筑·节点"写进场所，后续打字移动也会沿用此格式。
+// 建筑基名恒取 currentMapData.title（生成时即固定），永远只有一层 ·，不会随场所累加变长。
 async function exploreNode(node) {
   if (!node || !currentMapData) return;
-  const text = `探索${node.name}`;
+  const base = (currentMapData.title || '').trim();
+  const placePath = base ? `${base}${NODE_SEP}${node.name}` : node.name;
+  const text = `探索${node.name}（请将场所更新为「${placePath}」）`;
+  // 本地立即高亮该节点为"当前位置"并持久化（点击式追踪，可靠零依赖，不依赖AI是否照写）
+  setCurrentNode(node.id);
   try {
     const ok = await tavernSendMessage(text);
     if (!ok) throw new Error('写入失败');
-    showToast(`已填入「${text}」`, 'success');
+    showToast(`已填入「探索${node.name}」`, 'success');
   } catch (e) {
     // 降级：复制到剪贴板，提示手动粘贴
     try {
       await navigator.clipboard.writeText(text);
-      showToast(`酒馆桥接不可用，已复制「${text}」，请手动粘贴`, 'success');
+      showToast(`酒馆桥接不可用，已复制探索指令，请手动粘贴`, 'success');
     } catch {
       showToast('写入失败：' + (e.message || e), 'error');
     }
