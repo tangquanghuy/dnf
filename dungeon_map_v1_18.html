@@ -151,6 +151,17 @@ iconify-icon { display:inline-block; width:1em; height:1em; line-height:1; }
   background:#b18cff; padding:2px 7px; border-radius:8px; white-space:nowrap;
   box-shadow:0 1px 4px rgba(0,0,0,0.5);
 }
+/* 彩蛋存在时的隐晦提示：地图顶部一条低调横幅，不透露是哪个节点 */
+#secret-hint {
+  position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:120;
+  padding:5px 14px; border-radius:14px; font-size:12px; letter-spacing:1px; white-space:nowrap;
+  color:#e9d8ff; background:rgba(40,28,60,0.82); border:1px solid rgba(177,140,255,0.45);
+  pointer-events:none; animation:secretHintGlow 2.6s ease-in-out infinite alternate;
+}
+@keyframes secretHintGlow {
+  0%   { box-shadow:0 0 6px rgba(177,140,255,0.25); opacity:0.82; }
+  100% { box-shadow:0 0 16px rgba(177,140,255,0.6); opacity:1; }
+}
 
 #empty-state {
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
@@ -295,6 +306,7 @@ iconify-icon { display:inline-block; width:1em; height:1em; line-height:1; }
 
   <!-- 右侧地图 -->
   <div id="map-area">
+    <div id="secret-hint" style="display:none;">✦ 此地似乎别有玄机，仔细探索或有发现</div>
     <div id="empty-state">点击"生成地图"，将依据当前剧情自动生成</div>
     <div id="map-container" style="display:none;">
       <canvas id="edge-canvas"></canvas>
@@ -357,6 +369,7 @@ let nodeElements = [];
 
 // 彩蛋：每次生成有一定概率掷中"隐藏节点"。命中与否由代码掷骰决定（不交给 AI），
 // 命中时才在生成提示词里追加"加入 1 个隐藏节点"的要求。
+// 至于这个彩蛋"是什么"，交给最清楚本副本主题的 AI 按题材自行决定，代码不预设类型。
 const HIDDEN_NODE_CHANCE = 0.25;
 
 // 副本内"建筑·节点"格式的分隔符（发送文本里恒用此符拼出 {title}·{节点名}）。
@@ -629,8 +642,10 @@ function buildStructurePrompt({ ctx, note, size, history, includeHidden }) {
 【额外：隐藏彩蛋节点（本次必须加入恰好 1 个）】
 - 在常规 ${size} 个节点之外，再额外加入 1 个隐藏节点，并在该节点对象上加字段 "hidden": true。
 - 它只能与 1 个普通节点（不能是 entrance / exit）相连，且只有这 1 条边。
-- 它是稀有彩蛋：隐藏密室 / 秘藏 / 异闻 / 被尘封之地等，藏在不起眼处，需要搜查才会被发现。往往藏有更加丰厚或更激动人心的内容
-- 命名同样遵守命名规则；type 按其真实功能选择（treasure / discovery / hazard 等）。
+- 它是稀有彩蛋，藏在不起眼处、需搜查才会被发现，往往藏有更丰厚或更特别的内容。
+- 这个彩蛋"是什么"由你根据【本副本的主题与基调】自行决定——什么贴合就用什么，下面只是方向示例，绝不要硬套或全选：
+  · 隐藏密室/秘藏、隐居的人物/秘客、隐秘祭坛或遗迹机缘、隐匿凶兽的巢穴、机关守护的宝藏、揭示秘辛的线索点……（也可以是更契合本题材的其它形式）
+- type 从八类里选最贴合你所定彩蛋性质的那个；命名遵守命名规则，但不要在名字里直白写出"隐藏/秘密/暗"等字眼。
 ` : '';
   return `${COMMON_HEADER}
 
@@ -662,7 +677,7 @@ ${hiddenBlock}
   "nodes": [
     {"id": "entrance", "name": "正门", "type": "entrance"},
     {"id": "...", "name": "...", "type": "..."}${includeHidden ? `,
-    {"id": "secret_01", "name": "...", "type": "treasure", "hidden": true}` : ''}
+    {"id": "secret_01", "name": "...", "type": "（按彩蛋性质自选）", "hidden": true}` : ''}
   ],
   "edges": [
     {"source": "entrance", "target": "...", "label": "石阶向下"}
@@ -677,10 +692,10 @@ function buildFillPrompt({ title, ctx, note, history, level, batch, neighbors })
   const hiddenNames = batch.filter(n => n.hidden).map(n => n.name);
   const hiddenBlock = hiddenNames.length ? `
 【隐藏彩蛋节点的额外字段：discovery（仅标【隐藏彩蛋】的节点需要）】
-本次有隐藏节点：${hiddenNames.join('、')}。为它们额外输出一个 "discovery" 字段，写明"如何被发现"：
+本次有隐藏节点：${hiddenNames.join('、')}。它是贴合本副本主题的稀有彩蛋。为它额外输出一个 "discovery" 字段，写明"如何被发现"：
 - 必须锚定在它相邻的那个普通节点处——即玩家走到相邻节点后，要做什么、过什么检定才能发现它。
 - 必须给出明确 DC 检定（如"DC 16 感知，留意到柴堆后透出的微光"或"DC 14 调查，墙缝藏着暗门机关"）。
-- 它的 secrets 写彩蛋的实际内容/奖励/异闻（发现并进入后才揭示）。
+- 它的 secrets 写彩蛋的实际内容/奖励/异闻（发现并进入后才揭示），要贴合它的性质、足够有分量。
 - summary / hook 照常写（描述发现后所见），但 hook 不要剧透它是隐藏的。
 ` : '';
 
@@ -920,7 +935,7 @@ async function generate() {
     }
 
     // ===== Step 1: 一次性生成结构（节点 + 连接） =====
-    // 彩蛋掷骰：命中才要求 AI 加入隐藏节点（决定权在代码，不在 AI）。
+    // 彩蛋掷骰：命中才要求 AI 加入隐藏节点（决定权在代码，不在 AI）；至于彩蛋是什么，由 AI 按题材自定。
     const includeHidden = Math.random() < HIDDEN_NODE_CHANCE;
     setProgress(15, '步骤 1/2：生成地图结构（节点+连接）...');
     const structPrompt = buildStructurePrompt({ ctx, note, size, history, includeHidden });
@@ -1013,6 +1028,11 @@ async function generate() {
 
     // 生成成功后自动收起生成器面板
     setPanelCollapsed(true);
+
+    // 命中彩蛋时，给一条隐晦提示（不说是哪个节点），让玩家知道这张图不一般
+    if (currentMapData.nodes.some(n => n.hidden && !n.revealed)) {
+      setTimeout(() => showToast('✦ 此次副本似乎别有玄机……', 'success'), 900);
+    }
   } catch (e) {
     console.error(e);
     setProgress(0, '生成失败：' + e.message, true);
@@ -1104,6 +1124,17 @@ function renderNodes() {
     nodeElements.push({ el: wrapper, node: n });
   });
   updatePositions();
+  updateSecretHint();
+}
+
+// 隐晦提示：只要图上还有"未被发现的隐藏彩蛋"，就在地图顶部显示一条低调横幅，
+// 让玩家知道这张图不一般，但绝不透露是哪个节点——逼着玩家逐个探索。发现后自动消失。
+function updateSecretHint() {
+  const el = $('secret-hint');
+  if (!el) return;
+  const has = !!(currentMapData && Array.isArray(currentMapData.nodes)
+    && currentMapData.nodes.some(n => n.hidden && !n.revealed));
+  el.style.display = has ? 'block' : 'none';
 }
 
 // 设为当前位置：点击"探索此处"时本地立即高亮（可靠、零依赖），并持久化到缓存
@@ -1349,6 +1380,7 @@ function buildWorldbookSecretText() {
   if (hiddenPending.length) {
     s += `## 隐藏区域（彩蛋——被发现前绝不主动提及、不暗示其存在）\n`;
     s += `判定规则（由GM全权掌握）：只要他正位于下列隐藏区域的相邻节点并做出搜查动作，就由你按其"发现条件"进行一次检定；通过才向玩家揭晓该区域并允许前往，不通过则如实描述"未见异常"。是否、何时揭晓完全由你依据检定与情境判断；玩家未主动搜查时不得主动透露。\n`;
+    s += `氛围铺垫（可选）：玩家初入本副本时，你可以用一句环境描写隐晦暗示"此地似乎别有蹊跷"，烘托探索欲，但绝不可点明在哪个节点、也不得确认隐藏区域真的存在。\n`;
     hiddenPending.forEach(h => {
       const parent = nodes.find(n => n.id === h.parentId);
       const parentName = parent ? parent.name : '某相邻节点';
