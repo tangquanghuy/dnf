@@ -13,9 +13,32 @@ html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; backgro
 
 /* 左侧表单 */
 #form-panel {
-  width:340px; background:rgba(15,20,35,0.95); border-right:1px solid rgba(200,184,138,0.15);
-  padding:20px; overflow-y:auto;
+  width:340px; flex:0 0 340px; background:rgba(15,20,35,0.95); border-right:1px solid rgba(200,184,138,0.15);
+  padding:20px; overflow-y:auto; position:relative;
+  transition: width 0.28s ease, flex-basis 0.28s ease, padding 0.28s ease, opacity 0.2s ease;
 }
+#form-panel.collapsed {
+  width:0; flex-basis:0; padding-left:0; padding-right:0;
+  overflow:hidden; border-right:none; opacity:0;
+}
+/* 收起/展开 切换按钮（悬浮在左上角） */
+#panel-toggle {
+  position:fixed; top:12px; left:12px; z-index:150;
+  width:34px; height:34px; border-radius:8px; cursor:pointer;
+  background:rgba(20,28,42,0.92); color:#c8b88a; border:1px solid rgba(200,184,138,0.3);
+  font-size:16px; display:flex; align-items:center; justify-content:center;
+  font-family:inherit; box-shadow:0 2px 8px rgba(0,0,0,0.4);
+}
+#panel-toggle:hover { background:rgba(200,184,138,0.18); }
+/* 面板内的收起按钮 */
+#panel-collapse {
+  position:absolute; top:14px; right:14px; z-index:10;
+  width:26px; height:26px; border-radius:6px; cursor:pointer;
+  background:rgba(200,184,138,0.08); color:#c8b88a; border:1px solid rgba(200,184,138,0.2);
+  font-size:14px; display:flex; align-items:center; justify-content:center; font-family:inherit;
+}
+#panel-collapse:hover { background:rgba(200,184,138,0.2); }
+
 #form-panel h1 { font-size:18px; color:#e8dcc0; margin-bottom:16px; }
 .form-group { margin-bottom:14px; }
 .form-group label { display:block; font-size:12px; color:#8a7a5a; margin-bottom:4px; font-weight:600; }
@@ -151,8 +174,11 @@ html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; backgro
 </head>
 <body>
 <div id="app">
+  <!-- 展开生成器（仅在收起时显示） -->
+  <button id="panel-toggle" title="展开生成器" style="display:none;">☰</button>
   <!-- 左侧表单 -->
   <div id="form-panel">
+    <button id="panel-collapse" title="收起生成器">⟨</button>
     <h1>子地图生成器</h1>
 
     <div id="ctx-banner" style="margin-bottom:14px; padding:10px 12px; background:rgba(108,92,231,0.1); border:1px solid rgba(108,92,231,0.25); border-radius:8px; font-size:12px; line-height:1.7;">
@@ -817,6 +843,19 @@ async function generate() {
     setProgress(100, `生成完成：${nodes.length} 个节点，${edges.length} 条连接${warn}`);
     $('actions').classList.add('active');
     renderMap();
+
+    // 自动写入世界书「副本地图」条目
+    try {
+      const res = await writeDungeonToWorldbook();
+      setProgress(100, `已写入世界书「${res?.worldbookName || ''}」· 副本地图${warn}`);
+      showToast('已写入世界书「副本地图」', 'success');
+    } catch (e) {
+      console.warn('[子地图] 写入世界书失败:', e);
+      showToast('写入世界书失败：' + (e.message || e), 'error');
+    }
+
+    // 生成成功后自动收起生成器面板
+    setPanelCollapsed(true);
   } catch (e) {
     console.error(e);
     setProgress(0, '生成失败：' + e.message, true);
@@ -968,6 +1007,53 @@ function getExportContent() {
   return `var MAP_JSON_DATA = ${JSON.stringify(data, null, 2)};`;
 }
 
+// 生成写入世界书「副本地图」条目的可读文本
+function buildWorldbookText() {
+  if (!currentMapData) return '';
+  const { title, nodes, edges } = currentMapData;
+  const nodeMap = {};
+  nodes.forEach(n => { nodeMap[n.id] = n; });
+  const typeName = t => (typeConfig[t] || {}).label || t || '节点';
+
+  let s = `【当前副本地图：${title}】\n`;
+  s += `共 ${nodes.length} 个节点，${edges.length} 条通路。以下为 GM 专用副本结构（含隐藏信息），供主AI据此推进探索与战斗。\n\n`;
+  s += `## 节点\n`;
+  nodes.forEach(n => {
+    s += `■ ${n.name}（${typeName(n.type)}）\n`;
+    if (n.summary) s += `  · 概况：${n.summary}\n`;
+    if (n.monsters) s += `  · 怪物：${n.monsters}\n`;
+    if (n.environmentFeatures) s += `  · 环境：${n.environmentFeatures}\n`;
+    if (n.secrets) s += `  · GM机密：${n.secrets}\n`;
+  });
+  s += `\n## 通路\n`;
+  edges.forEach(e => {
+    const a = nodeMap[e.source]?.name || e.source;
+    const b = nodeMap[e.target]?.name || e.target;
+    s += `■ ${a} → ${b}${e.label ? '（' + e.label + '）' : ''}\n`;
+  });
+  return s.trim();
+}
+
+// 把副本写入世界书的「副本地图」条目（经宿主代理，复用人物详情那套写入接口）
+async function writeDungeonToWorldbook() {
+  const content = buildWorldbookText();
+  if (!content) throw new Error('没有可写入的副本内容');
+  return await callHostRPC('save_worldbook', {
+    entryName: '副本地图',
+    title: currentMapData.title,
+    content,
+    keywords: []   // 空 → 常驻注入，主AI始终掌握当前副本
+  }, 20000);
+}
+
+// ==================== 表单面板 收起/展开 ====================
+function setPanelCollapsed(collapsed) {
+  const panel = $('form-panel');
+  const toggle = $('panel-toggle');
+  if (panel) panel.classList.toggle('collapsed', !!collapsed);
+  if (toggle) toggle.style.display = collapsed ? 'flex' : 'none';
+}
+
 $('export-btn').addEventListener('click', () => {
   const content = getExportContent();
   if (!content) return;
@@ -995,6 +1081,10 @@ $('copy-btn').addEventListener('click', async () => {
 $('generate-btn').addEventListener('click', generate);
 $('ctx-refresh').addEventListener('click', () => { loadHostContext(); });
 
+// 收起/展开 生成器面板
+$('panel-collapse').addEventListener('click', () => setPanelCollapsed(true));
+$('panel-toggle').addEventListener('click', () => setPanelCollapsed(false));
+
 // 调试面板展开/收起
 $('debug-toggle').addEventListener('click', () => {
   const log = $('debug-log'), caret = $('debug-caret');
@@ -1002,6 +1092,9 @@ $('debug-toggle').addEventListener('click', () => {
   log.style.display = open ? 'none' : 'block';
   if (caret) caret.textContent = open ? '展开 ▼' : '收起 ▲';
 });
+
+// 开始时自动展开生成器
+setPanelCollapsed(false);
 
 // 页面加载后尝试拉取一次剧情上下文（嵌入酒馆时生效）
 loadHostContext();
