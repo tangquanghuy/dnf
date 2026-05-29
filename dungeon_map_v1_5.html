@@ -226,8 +226,6 @@ html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; backgro
 
     <div id="actions">
       <button class="action-btn" id="apply-btn">重写世界书</button>
-      <button class="action-btn" id="export-btn">导出 JSON</button>
-      <button class="action-btn" id="copy-btn">复制 JSON</button>
     </div>
 
     <div id="debug-box" style="margin-top:14px; display:none;">
@@ -256,7 +254,7 @@ html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; backgro
     <div class="detail-summary" id="detail-summary"></div>
     <div class="detail-body" id="detail-body"></div>
     <div class="detail-actions">
-      <button class="detail-action-btn primary" id="detail-enter-btn">进入此处（同步到主AI）</button>
+      <button class="detail-action-btn primary" id="detail-explore-btn">探索此处</button>
       <button class="detail-action-btn" id="detail-copy-btn">复制描述</button>
     </div>
   </div>
@@ -517,7 +515,8 @@ const COMMON_HEADER = `[TASK CHANGED] 进入分析模式：本次暂停角色扮
 - 画面感优先：节点描述要有具体的视觉、听觉、气味细节
 - 信息分层：summary 是玩家走进去就能看到的；secrets 是需要检定、调查、互动才能发现的
 - 怪物规模匹配：怪物等级应在玩家等级 ±10 级以内
-- 连贯性：填充内容时如果传入了相邻节点摘要，新节点的描述要与之呼应`;
+- 连贯性：填充内容时如果传入了相邻节点摘要，新节点的描述要与之呼应
+- 克制原则（极其重要）：普通场所就让它普通。现实里大多数房间只是房间，大多数茶楼就是喝茶的茶楼，没有暗格、密信、伏击或阴谋。不要为了"显得有故事"给每个节点强行安排隐藏机密。没有就留空，宁可平淡，不要滥造阴谋。`;
 
 const HISTORY_BLOCK = (history) => history ? `\n【近期剧情上下文（生成内容必须与之呼应，并据此推断玩家此行的目标）】\n${history}\n` : '';
 
@@ -618,8 +617,8 @@ ${batchList}
 - summary：50-80 字，玩家可见的感官细节，不含隐藏信息
 - monsters：具体名称与特征。禁止"一群怪物""若干小妖"这种模糊描述。无则为空字符串
 - environmentFeatures：可交互物件、机关、显眼特征
-- secrets：GM 专属，隐藏线索、陷阱、宝箱内容、检定要求
-- 不是每个节点都必须有怪物，允许纯探索 / 谜题 / 叙事节点
+- secrets：GM 专属，仅在该节点确有隐藏内容时填写，否则必须留空字符串 ""
+- 不是每个节点都必须有怪物或机密，普通节点 monsters 与 secrets 皆可为空
 
 【summary 必须包含】
 - 视觉细节：建筑样式、家具陈设、损坏程度
@@ -633,12 +632,39 @@ ${batchList}
 - 需要检定才能发现的线索
 - 怪物的隐藏位置或战术
 
-【secrets 必须包含】
-- DC 检定（"DC 15 察觉发现地砖松动 / DC 13 调查找到夹层"）
-- 陷阱触发条件与伤害
-- 怪物的伏击位置与战术
-- 隐藏线索、密信、暗格、宝箱内容
-- NPC 真实动机、剧情反转
+【secrets 填写原则——克制 + 多样（重要）】
+secrets 是"玩家主动探索此处时才揭示"的 GM 暗置发现，绝不限于阴谋、陷阱或宝藏，也绝不绑定某一种场景。它是探索这个具体地点可能得到的任意收获，从"什么都没有"到"重大发现"的完整光谱（方向分类，跨主题通用）：
+- 一无所获 / 只是寻常杂物（最常见，留空或一句平淡带过）
+- 与主题契合的氛围见闻、奇景、痕迹、趣味细节
+- 财物 / 资源 / 补给 / 可用材料
+- 来历不明的诡奇之物、谜题、机关
+- 情报线索：密信、残图、刻字、目击、传闻
+- 人物或生物遭遇（具体身份由场景决定，见下）
+- 危险：陷阱、伏击、毒、塌方、敌对存在
+- 剧情触发：呼应世界书 / 变量里尚未开启的相关事件
+
+【关键：内容形态必须由"本场景主题"决定，同一类发现在不同副本里长相完全不同】
+- 市井茶楼 → 
+  - 邻座儒生的牢骚、说书人的奇谈、掌柜私藏的好茶、熟人捎来的口信
+  - 一无所获 / 只是寻常旧物杂货（最常见，普通场所大多如此，留空或一句平淡带过即可）
+  - 奇闻趣事、市井见闻、墙角八卦、无关紧要却有味道的细节
+  - 人物偶遇：撞见熟人、遇见美人、引起旁人注意，或邻座一位与主线无关的角色（江湖客 / 同行冒险者 / 行脚商贩 / 微服官吏 / 落魄儒生……依世界观而定）
+- 真正的线索、密信、暗格、机关、陷阱、伏击、剧情反转、宝藏（这只是众多可能里的一种，不是默认项）
+- 古墓废墟 → 棺中陪葬、壁上刻文、塌陷的暗道、守墓的怨灵
+- 敌营 / 矿洞 → 巡逻换岗的空隙、被俘的同伴、堆放的军械、一触即燃的火药
+- 妖兽巢穴 → 啃剩的骸骨、未孵的卵、幸存的猎物、随时归巢的母兽
+（以上仅示意"如何把抽象分类落到具体主题"，禁止照抄）
+
+核心顺序：
+1. 模拟真实：先想"这个具体地点此刻最可能有什么"。普通场所就让它普通，没有就大方留空，绝不为了"显得有故事"硬凹。
+2. 匹配主题基调：先锁定本副本/场所的主题（市井、古墓、战阵、秘境、妖巢……），内容必须长在这个主题上，不要把社交奇遇硬塞进凶险副本，也别把杀机塞进太平茶馆。
+3. 在前两条成立的前提下，整张地图的 secrets 越多姿多样越好——避免清一色全是阴谋，也避免每个节点都是同一种遭遇。
+以上分类与举例都只是方向，AI 必须结合当前世界书、地点、阵营、剧情与玩家状态因地制宜地生成，严禁照搬。
+
+【secrets 写法】
+- 涉及机关/陷阱/隐藏物：给出具体检定与触发、伤害或后果（如"DC 13 调查发现柜底夹层，内藏一封密信"）
+- 人物/生物遭遇：点明身份、来意或威胁，给主AI一个能展开的钩子即可，不必写死结局
+- 若无内容：填空字符串 ""
 
 输出量上限：每批 700 字符。
 
@@ -996,20 +1022,8 @@ container.addEventListener('wheel', e => {
 window.addEventListener('resize', () => { if (currentMapData) { renderNodes(); renderEdges(); } });
 
 // ==================== 导出 ====================
-function getExportContent() {
-  if (!currentMapData) return null;
-  const data = {
-    mapData: {
-      title: currentMapData.title,
-      nodes: currentMapData.nodes,
-      edges: currentMapData.edges
-    }
-  };
-  return `var MAP_JSON_DATA = ${JSON.stringify(data, null, 2)};`;
-}
-
-// 生成写入世界书「副本地图」条目的可读文本
-function buildWorldbookText() {
+// 生成「副本地图」条目（玩家可见/概览）的可读文本：结构 + 公开摘要，不含任何 GM 机密
+function buildWorldbookPublicText() {
   if (!currentMapData) return '';
   const { title, nodes, edges } = currentMapData;
   const nodeMap = {};
@@ -1017,14 +1031,13 @@ function buildWorldbookText() {
   const typeName = t => (typeConfig[t] || {}).label || t || '节点';
 
   let s = `【当前副本地图：${title}】\n`;
-  s += `共 ${nodes.length} 个节点，${edges.length} 条通路。以下为 GM 专用副本结构（含隐藏信息），供主AI据此推进探索与战斗。\n\n`;
+  s += `共 ${nodes.length} 个节点，${edges.length} 条通路。以下为玩家可见的地图概览（不含隐藏信息），供主AI描述场景、推进探索。\n\n`;
   s += `## 节点\n`;
   nodes.forEach(n => {
     s += `■ ${n.name}（${typeName(n.type)}）\n`;
     if (n.summary) s += `  · 概况：${n.summary}\n`;
     if (n.monsters) s += `  · 怪物：${n.monsters}\n`;
     if (n.environmentFeatures) s += `  · 环境：${n.environmentFeatures}\n`;
-    if (n.secrets) s += `  · GM机密：${n.secrets}\n`;
   });
   s += `\n## 通路\n`;
   edges.forEach(e => {
@@ -1035,16 +1048,56 @@ function buildWorldbookText() {
   return s.trim();
 }
 
-// 把副本写入世界书的「副本地图」条目（经宿主代理，复用人物详情那套写入接口）
+// 生成「副本地图·GM机密」条目的可读文本：只含有机密的节点；若全图无机密则返回说明文案
+function buildWorldbookSecretText() {
+  if (!currentMapData) return '';
+  const { title, nodes } = currentMapData;
+  const typeName = t => (typeConfig[t] || {}).label || t || '节点';
+  const withSecrets = nodes.filter(n => n.secrets && String(n.secrets).trim());
+
+  let s = `【副本地图·GM机密：${title}】\n`;
+  s += `以下为 GM 专属隐藏信息，仅在玩家实际探索到对应节点、且通过检定/调查/互动后才可揭示，切勿主动剧透。\n\n`;
+  if (!withSecrets.length) {
+    s += `（本副本各节点均无特殊机密，按普通场所处理即可。）`;
+    return s.trim();
+  }
+  withSecrets.forEach(n => {
+    s += `■ ${n.name}（${typeName(n.type)}）\n`;
+    s += `  · GM机密：${n.secrets}\n`;
+  });
+  return s.trim();
+}
+
+// 把副本写入世界书：拆成「副本地图」（玩家可见概览）与「副本地图·GM机密」两个条目
+// 绿灯关键词：
+//   - 概览条目：副本地图 + 标题 + 每个节点名（提到地图或任一节点都加载）
+//   - 机密条目：仅每个节点名（只有玩家「探索xxx」真正进入节点时才加载，避免机密过早泄露）
 async function writeDungeonToWorldbook() {
-  const content = buildWorldbookText();
-  if (!content) throw new Error('没有可写入的副本内容');
-  return await callHostRPC('save_worldbook', {
+  const data = currentMapData;
+  if (!data || !Array.isArray(data.nodes) || !data.nodes.length) {
+    throw new Error('没有可写入的副本内容');
+  }
+  const nodeNames = data.nodes.map(n => n.name).filter(Boolean);
+  const publicKeywords = [...new Set(['副本地图', data.title, ...nodeNames].filter(Boolean))];
+  const secretKeywords = [...new Set(nodeNames)];
+
+  // 1) 玩家可见概览条目
+  const res = await callHostRPC('save_worldbook', {
     entryName: '副本地图',
-    title: currentMapData.title,
-    content,
-    keywords: ['副本地图']   // 绿灯：由「副本地图」四字触发激活
+    title: data.title,
+    content: buildWorldbookPublicText(),
+    keywords: publicKeywords
   }, 20000);
+
+  // 2) GM 机密条目（始终写入，全图无机密时写入占位说明，保证不残留上一张图的机密）
+  await callHostRPC('save_worldbook', {
+    entryName: '副本地图·GM机密',
+    title: data.title,
+    content: buildWorldbookSecretText(),
+    keywords: secretKeywords.length ? secretKeywords : ['副本地图']
+  }, 20000);
+
+  return res;
 }
 
 // ==================== 表单面板 收起/展开 ====================
@@ -1088,30 +1141,6 @@ async function rewriteWorldbookManually() {
   }
 }
 
-$('export-btn').addEventListener('click', () => {
-  const content = getExportContent();
-  if (!content) return;
-  const safeTitle = (currentMapData.title || 'dungeon').replace(/[^\w\u4e00-\u9fa5]/g, '_');
-  const blob = new Blob([content], { type: 'text/javascript' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${safeTitle}_mapdata.js`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-$('copy-btn').addEventListener('click', async () => {
-  const content = getExportContent();
-  if (!content) return;
-  try {
-    await navigator.clipboard.writeText(content);
-    setProgress(100, '已复制到剪贴板');
-  } catch {
-    setProgress(100, '复制失败，请用导出', true);
-  }
-});
-
 $('generate-btn').addEventListener('click', generate);
 $('ctx-refresh').addEventListener('click', () => { loadHostContext(); });
 
@@ -1151,61 +1180,29 @@ function showToast(msg, type = '') {
   setTimeout(() => { t.className = ''; }, 2200);
 }
 
-// 通知父窗口（如果嵌入到底部状态栏 iframe 里）
-function notifyHost(type, payload) {
-  try {
-    window.parent.postMessage({ type, payload, source: 'dungeon_map' }, '*');
-  } catch (e) {}
+// 通过宿主代理向酒馆聊天发送一条消息
+async function tavernSendMessage(text) {
+  return await callHostRPC('send_message', { text }, 15000);
 }
 
-// 通过宿主代理写入酒馆聊天变量
-async function tavernSetVar(key, value) {
-  try {
-    return await callHostRPC('set_var', { key, value }, 15000);
-  } catch (e) {
-    console.warn('[子地图] set_var 失败:', e);
-    return false;
-  }
-}
-
-// 玩家点击节点后选择"进入此处"
-async function enterNode(node) {
+// 玩家点击节点后选择"探索此处"：向酒馆发送「探索xxx」消息，
+// 由世界书「副本地图」词条的节点名关键词触发激活，主AI据此推进探索
+async function exploreNode(node) {
   if (!node || !currentMapData) return;
-
-  const payload = {
-    dungeonTitle: currentMapData.title,
-    node: {
-      id: node.id, name: node.name, type: node.type,
-      summary: node.summary || '',
-      monsters: node.monsters || '',
-      environmentFeatures: node.environmentFeatures || '',
-      secrets: node.secrets || ''
-    }
-  };
-
-  // 1. postMessage 通知父窗口（底部状态栏可在此更新位置变量）
-  notifyHost('dungeon_enter_node', payload);
-
-  // 2. 通过 STscript 更新场所位置变量 + 当前节点详情
-  let success = false;
-  // 更新位置·场所
-  success = await tavernSetVar('位置.场所', `${currentMapData.title}·${node.name}`) || success;
-  // 写入当前节点详情供主AI参考
-  success = await tavernSetVar('当前场所详情', payload.node) || success;
-
-  if (success) {
-    showToast(`已进入「${node.name}」，主AI已同步`, 'success');
-  } else {
-    // 降级：复制节点格式化文本
-    const text = `[进入] ${currentMapData.title}·${node.name}\n${node.summary || ''}`.trim();
+  const text = `探索${node.name}`;
+  try {
+    const ok = await tavernSendMessage(text);
+    if (!ok) throw new Error('发送失败');
+    showToast(`已发送「${text}」`, 'success');
+  } catch (e) {
+    // 降级：复制到剪贴板，提示手动粘贴
     try {
       await navigator.clipboard.writeText(text);
-      showToast('已复制节点描述（酒馆桥接不可用，请手动粘贴）', 'success');
+      showToast(`酒馆桥接不可用，已复制「${text}」，请手动粘贴`, 'success');
     } catch {
-      showToast('同步失败，请检查酒馆环境', 'error');
+      showToast('发送失败：' + (e.message || e), 'error');
     }
   }
-
   $('detail-overlay').classList.remove('active');
 }
 
@@ -1233,7 +1230,7 @@ nodeLayer.addEventListener('click', () => {}, true);
 
 // 重写按钮事件
 $('apply-btn').addEventListener('click', rewriteWorldbookManually);
-$('detail-enter-btn').addEventListener('click', () => enterNode(activeDetailNode));
+$('detail-explore-btn').addEventListener('click', () => exploreNode(activeDetailNode));
 $('detail-copy-btn').addEventListener('click', () => copyNodeDesc(activeDetailNode));
 </script>
 </body>
