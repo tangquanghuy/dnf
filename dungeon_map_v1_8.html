@@ -147,6 +147,16 @@ iconify-icon { display:inline-block; width:1em; height:1em; line-height:1; }
   border:1px solid rgba(200,184,138,0.2); margin-right:6px;
 }
 .detail-summary { padding:14px 24px; color:#b8b8a8; font-size:13px; line-height:1.8; border-bottom:1px solid rgba(200,184,138,0.08); white-space:pre-line; }
+.detail-hook {
+  margin:14px 24px 0; padding:10px 12px;
+  background:rgba(108,92,231,0.12); border:1px solid rgba(127,114,255,0.32);
+  border-radius:8px; color:#d4caf2; font-size:12.5px; line-height:1.7;
+}
+.detail-hook-tag {
+  display:inline-block; margin-right:8px; padding:1px 7px; border-radius:6px;
+  background:rgba(127,114,255,0.25); color:#e8e0ff; font-size:10.5px; font-weight:700; letter-spacing:0.5px;
+  vertical-align:1px;
+}
 .detail-body { padding:8px 24px 24px; }
 .detail-section { margin-top:12px; padding-top:10px; border-top:1px solid rgba(200,184,138,0.06); }
 .detail-section-title { font-size:11px; color:#8a7a5a; font-weight:600; margin-bottom:6px; letter-spacing:1px; }
@@ -234,7 +244,8 @@ iconify-icon { display:inline-block; width:1em; height:1em; line-height:1; }
     </div>
 
     <div id="actions">
-      <button class="action-btn" id="apply-btn">重写世界书</button>
+      <button class="action-btn" id="apply-btn">重写副本地图</button>
+      <button class="action-btn" id="delete-btn" style="flex:0 0 auto; color:#ff8090; border-color:rgba(233,69,96,0.35);">删除副本地图</button>
     </div>
 
     <div id="debug-box" style="margin-top:14px; display:none;">
@@ -295,10 +306,10 @@ const TYPE_ALIAS = {
 };
 function resolveType(t) { return typeConfig[t] ? t : (typeConfig[TYPE_ALIAS[t]] ? TYPE_ALIAS[t] : 'discovery'); }
 
+// 节点详情弹窗只展示玩家可见信息（不含 GM 机密 secrets）
 const FIELD_LABELS = {
   monsters: '怪物',
   environmentFeatures: '环境特征',
-  secrets: 'GM专属',
 };
 
 // ==================== 状态 ====================
@@ -634,6 +645,7 @@ ${batchList}
 
 【填充规则】
 - summary：50-80 字，玩家可见的感官细节，不含隐藏信息
+- hook：20-40 字，给玩家看的"探索提示"——不剧透前提下，暗示此处值得做什么、可能有什么。详见下方专条
 - monsters：具体名称与特征。禁止"一群怪物""若干小妖"这种模糊描述。无则为空字符串
 - environmentFeatures：可交互物件、机关、显眼特征
 - secrets：GM 专属，仅在该节点确有隐藏内容时填写，否则必须留空字符串 ""
@@ -685,6 +697,16 @@ secrets 是"玩家主动探索此处时才揭示"的 GM 暗置发现，绝不限
 - 人物/生物遭遇：点明身份、来意或威胁，给主AI一个能展开的钩子即可，不必写死结局
 - 若无内容：填空字符串 ""
 
+【hook（探索提示）写法——给玩家的"勾子"，不剧透但点出看点（重要）】
+hook 是节点详情里唯一直接诱导玩家"要不要探索这里"的一句话。玩家只看 summary 往往不知道这节点能干嘛，hook 就是用来补这一刀的。
+- 必须如实反映该节点的真实内容，绝不无中生有：
+  · 有 secrets：用感官化、留悬念的措辞从侧面点出"此处有蹊跷、值得一探"，但绝不说破是什么。例：「柜台后的伙计时不时往里间瞟，似乎不想让人靠近那道帘子。」
+  · 有怪物/战斗：渲染危险与对手的存在感，不报具体数值战术。例：「梁上传来窸窣爪音，黑暗里有什么正盯着进来的人。」
+  · 有宝藏/资源：暗示有可取之物，不点明具体价值。例：「角落的箱笼上落灰极薄，像是近期有人动过。」
+  · 确实平平无奇：如实给一句平淡定性（让玩家知道"这里大概没什么"也是有用信息），或直接留空 ""。例：「就是间寻常通铺，没看出什么名堂。」绝不为了吊胃口硬造悬念。
+- 严禁出现：DC、检定、机关结果、怪物数量/等级、secrets 的具体内容等任何机制或剧透信息。
+- 风格：一句话，画面感、口语化，像一个细心的同伴在你耳边低声提醒。
+
 输出量上限：每批 700 字符。
 
 【输出格式】
@@ -693,6 +715,7 @@ secrets 是"玩家主动探索此处时才揭示"的 GM 暗置发现，绝不限
     {
       "id": "节点id",
       "summary": "...",
+      "hook": "...",
       "monsters": "...",
       "environmentFeatures": "...",
       "secrets": "..."
@@ -861,6 +884,7 @@ async function generate() {
             const node = nodes.find(n => n.id === r.id);
             if (node) {
               node.summary = r.summary || '';
+              node.hook = r.hook || '';
               node.monsters = r.monsters || '';
               node.environmentFeatures = r.environmentFeatures || '';
               node.secrets = r.secrets || '';
@@ -874,7 +898,7 @@ async function generate() {
         logDebug(`步骤3·填充(${i+1}/${batches.length}) 异常`, (e && e.message) || e);
         // 降级：空描述继续
         batch.forEach(n => {
-          n.summary = ''; n.monsters = ''; n.environmentFeatures = ''; n.secrets = '';
+          n.summary = ''; n.hook = ''; n.monsters = ''; n.environmentFeatures = ''; n.secrets = '';
         });
       }
 
@@ -1002,6 +1026,9 @@ function openDetail(node) {
   `;
   $('detail-summary').textContent = node.summary || '（无描述）';
   let bodyHtml = '';
+  if (node.hook && String(node.hook).trim()) {
+    bodyHtml += `<div class="detail-hook"><span class="detail-hook-tag">探索提示</span>${escHtml(node.hook)}</div>`;
+  }
   for (const [key, label] of Object.entries(FIELD_LABELS)) {
     const val = node[key];
     if (!val || !String(val).trim()) continue;
@@ -1071,6 +1098,7 @@ function buildWorldbookPublicText() {
   nodes.forEach(n => {
     s += `■ ${n.name}（${typeName(n.type)}）\n`;
     if (n.summary) s += `  · 概况：${n.summary}\n`;
+    if (n.hook) s += `  · 看点：${n.hook}\n`;
     if (n.monsters) s += `  · 怪物：${n.monsters}\n`;
     if (n.environmentFeatures) s += `  · 环境：${n.environmentFeatures}\n`;
   });
@@ -1176,6 +1204,18 @@ async function rewriteWorldbookManually() {
   }
 }
 
+// 删除世界书里的副本地图条目（含 GM 机密条目）
+async function deleteWorldbookManually() {
+  if (!confirm('确定从世界书删除「副本地图」与「副本地图·GM机密」两个条目吗？\n此操作不影响当前画布上的地图。')) return;
+  try {
+    const res = await callHostRPC('delete_worldbook', { entryNames: ['副本地图', '副本地图·GM机密'] }, 20000);
+    if (res?.removed > 0) showToast(`已删除 ${res.removed} 个世界书条目`, 'success');
+    else showToast('世界书中没有找到副本地图条目', '');
+  } catch (e) {
+    showToast('删除失败：' + (e.message || e), 'error');
+  }
+}
+
 $('generate-btn').addEventListener('click', generate);
 $('ctx-refresh').addEventListener('click', () => { loadHostContext(); });
 
@@ -1215,27 +1255,28 @@ function showToast(msg, type = '') {
   setTimeout(() => { t.className = ''; }, 2200);
 }
 
-// 通过宿主代理向酒馆聊天发送一条消息
+// 通过宿主代理把文本写入酒馆聊天框（不自动发送）
 async function tavernSendMessage(text) {
   return await callHostRPC('send_message', { text }, 15000);
 }
 
-// 玩家点击节点后选择"探索此处"：向酒馆发送「探索xxx」消息，
-// 由世界书「副本地图」词条的节点名关键词触发激活，主AI据此推进探索
+// 玩家点击节点后选择"探索此处"：把「探索xxx」写入酒馆聊天框（不自动发送），
+// 与行动选项一致，由玩家自行确认后再点击发送。「探索xxx」会由世界书
+// 「副本地图」词条的节点名关键词触发激活，主AI据此推进探索
 async function exploreNode(node) {
   if (!node || !currentMapData) return;
   const text = `探索${node.name}`;
   try {
     const ok = await tavernSendMessage(text);
-    if (!ok) throw new Error('发送失败');
-    showToast(`已发送「${text}」`, 'success');
+    if (!ok) throw new Error('写入失败');
+    showToast(`已填入「${text}」`, 'success');
   } catch (e) {
     // 降级：复制到剪贴板，提示手动粘贴
     try {
       await navigator.clipboard.writeText(text);
       showToast(`酒馆桥接不可用，已复制「${text}」，请手动粘贴`, 'success');
     } catch {
-      showToast('发送失败：' + (e.message || e), 'error');
+      showToast('写入失败：' + (e.message || e), 'error');
     }
   }
   $('detail-overlay').classList.remove('active');
@@ -1247,6 +1288,7 @@ async function copyNodeDesc(node) {
   const lines = [
     `# ${node.name}`,
     node.summary || '',
+    node.hook ? `\n[探索提示] ${node.hook}` : '',
     node.monsters ? `\n[怪物] ${node.monsters}` : '',
     node.environmentFeatures ? `\n[环境] ${node.environmentFeatures}` : '',
     node.secrets ? `\n[GM] ${node.secrets}` : ''
@@ -1265,6 +1307,7 @@ nodeLayer.addEventListener('click', () => {}, true);
 
 // 重写按钮事件
 $('apply-btn').addEventListener('click', rewriteWorldbookManually);
+$('delete-btn').addEventListener('click', deleteWorldbookManually);
 $('detail-explore-btn').addEventListener('click', () => exploreNode(activeDetailNode));
 $('detail-copy-btn').addEventListener('click', () => copyNodeDesc(activeDetailNode));
 </script>
