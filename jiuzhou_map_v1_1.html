@@ -96,6 +96,56 @@ body::after {
   letter-spacing:1px;
 }
 
+/* ============ 玩家当前位置标记（醒目版）============ */
+.node-wrapper.player-here { z-index:95; }
+.special-marker-player { position:absolute; pointer-events:none; z-index:-1; }
+/* 大范围柔光晕 */
+.special-marker-player::before {
+  content:''; position:absolute; top:50%; left:50%; width:118px; height:118px;
+  transform:translate(-50%,-50%); border-radius:50%;
+  background:radial-gradient(circle, rgba(255,205,77,0.6) 0%, rgba(255,170,40,0.26) 45%, transparent 72%);
+  animation:pulse-player 1.6s ease-in-out infinite;
+}
+/* 收紧的高亮金环，紧贴图标四周 */
+.special-marker-player::after {
+  content:''; position:absolute; top:50%; left:50%; width:62px; height:62px;
+  transform:translate(-50%,-50%); border-radius:50%;
+  border:3px solid #ffd24d;
+  box-shadow:0 0 16px 5px rgba(255,205,77,0.9), inset 0 0 10px rgba(255,205,77,0.55);
+  animation:ring-player 1.6s ease-in-out infinite;
+}
+@keyframes pulse-player {
+  0%,100% { opacity:0.55; transform:translate(-50%,-50%) scale(0.95); }
+  50%     { opacity:1;    transform:translate(-50%,-50%) scale(1.18); }
+}
+@keyframes ring-player {
+  0%,100% { opacity:0.7; transform:translate(-50%,-50%) scale(1); }
+  50%     { opacity:1;   transform:translate(-50%,-50%) scale(1.12); }
+}
+/* 头顶弹跳定位针——尺寸无关、最直观的"你在这里" */
+.player-pin {
+  position:absolute; top:-50px; left:50%; transform:translateX(-50%);
+  font-size:30px; line-height:1; pointer-events:none; z-index:3;
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,0.75));
+  animation:pin-bounce 1.1s ease-in-out infinite;
+}
+@keyframes pin-bounce {
+  0%,100% { transform:translateX(-50%) translateY(0); }
+  50%     { transform:translateX(-50%) translateY(-7px); }
+}
+.special-badge-player {
+  position:absolute; top:-24px; left:50%; transform:translateX(-50%); white-space:nowrap;
+  font-size:11px; font-weight:700; color:#3a2606; background:linear-gradient(180deg,#ffe48f,#ffc23d);
+  padding:3px 9px; border-radius:10px; border:1px solid #fff1c4;
+  letter-spacing:1px; pointer-events:none; z-index:3;
+  box-shadow:0 0 12px rgba(255,200,60,0.85);
+  animation:badge-glow-player 1.6s ease-in-out infinite alternate;
+}
+@keyframes badge-glow-player {
+  0%   { box-shadow:0 0 6px rgba(255,200,60,0.5); }
+  100% { box-shadow:0 0 16px rgba(255,200,60,0.95); }
+}
+
 /* Detail Modal */
 .detail-overlay {
   display:none; position:fixed; inset:0; z-index:200;
@@ -779,6 +829,7 @@ function renderNodes() {
     nodeElements.push({ el: wrapper, node: n });
   });
   updatePositions();
+  updatePlayerLocation();
 }
 
 function applyHoverDim() {
@@ -1077,6 +1128,21 @@ function renderMinimap() {
     minimapCtx.arc(offX + (n.x - minX) * s, offY + (n.y - minY) * s, r, 0, Math.PI * 2);
     minimapCtx.fill();
   });
+
+  // 玩家当前位置：绿色亮点 + 外环
+  if (lastPlayerNodeId && nodeMap[lastPlayerNodeId]) {
+    const pn = nodeMap[lastPlayerNodeId];
+    const px = offX + (pn.x - minX) * s, py = offY + (pn.y - minY) * s;
+    minimapCtx.fillStyle = '#00dc82';
+    minimapCtx.beginPath();
+    minimapCtx.arc(px, py, 3, 0, Math.PI * 2);
+    minimapCtx.fill();
+    minimapCtx.strokeStyle = 'rgba(0,220,130,0.55)';
+    minimapCtx.lineWidth = 1.2;
+    minimapCtx.beginPath();
+    minimapCtx.arc(px, py, 5, 0, Math.PI * 2);
+    minimapCtx.stroke();
+  }
 }
 
 // ============ LEGEND ============
@@ -1122,6 +1188,99 @@ function render() {
   updatePositions();
   renderMinimap();
 }
+
+// ============ 玩家当前位置（接收宿主 mvu_location 推送，匹配并高亮节点）============
+// 底部状态栏作为同源父窗口，会广播 { type:'mvu_location', 位置:{场所,区域,大陆} }；
+// 本页据此模糊匹配地图节点，在该节点上叠加发光环 + "📍场所"徽标。
+let _mvuLocation = { 场所:'', 区域:'', 大陆:'' };
+let lastPlayerNodeId = null;
+
+function removePlayerMarker() {
+  document.querySelectorAll('.special-marker-player, .special-badge-player, .player-pin').forEach(el => el.remove());
+  nodeLayer.querySelectorAll('.node-wrapper.player-here').forEach(el => el.classList.remove('player-here'));
+}
+
+// 归一化：去空格、统一各种分隔点为 ·，便于模糊比对
+function normalizeStr(s) {
+  return String(s || '').replace(/\s+/g, '').replace(/[.・‧]/g, '·').toLowerCase();
+}
+
+// 在节点里为 场所/区域/大陆 找最匹配的一个：精确 → 归一化 → 双向包含 → 按分隔符分段
+function findMatchingNode(场所, 区域, 大陆) {
+  const candidates = [场所, 区域, 大陆].filter(Boolean);
+  // 1) 精确匹配节点名
+  for (const loc of candidates) {
+    const exact = nodes.find(n => n.name === loc);
+    if (exact) return exact;
+  }
+  // 2) 归一化后相等
+  for (const loc of candidates) {
+    const norm = normalizeStr(loc);
+    const m = nodes.find(n => normalizeStr(n.name) === norm);
+    if (m) return m;
+  }
+  // 3) 双向包含
+  for (const loc of candidates) {
+    if (loc.length < 2) continue;
+    const norm = normalizeStr(loc);
+    const m = nodes.find(n => { const nn = normalizeStr(n.name); return nn.includes(norm) || norm.includes(nn); });
+    if (m) return m;
+  }
+  // 4) 按 · 等分隔符分段，逐段双向包含（如「江宁府 · 南城」→ 江宁府 / 南城）
+  for (const loc of candidates) {
+    const parts = String(loc).split(/[·・‧.\s]+/).filter(p => p.length >= 2);
+    for (const part of parts) {
+      const np = normalizeStr(part);
+      const m = nodes.find(n => { const nn = normalizeStr(n.name); return nn.includes(np) || np.includes(nn); });
+      if (m) return m;
+    }
+  }
+  return null;
+}
+
+function updatePlayerLocation() {
+  const { 场所 = '', 区域 = '', 大陆 = '' } = _mvuLocation || {};
+  if (!场所 && !区域 && !大陆) { removePlayerMarker(); lastPlayerNodeId = null; return; }
+
+  const matched = findMatchingNode(场所, 区域, 大陆);
+  if (!matched) { removePlayerMarker(); lastPlayerNodeId = null; return; }
+
+  // 节点未变且徽标仍在 → 无需重建
+  if (lastPlayerNodeId === matched.id && document.querySelector('.special-badge-player')) return;
+
+  removePlayerMarker();
+  lastPlayerNodeId = matched.id;
+
+  const wrapper = nodeLayer.querySelector(`.node-wrapper[data-id="${matched.id}"]`);
+  if (!wrapper) return; // 当前筛选下该节点未渲染，待其可见时由 renderNodes 重新调用
+
+  wrapper.classList.add('player-here');
+  const markerBg = document.createElement('div');
+  markerBg.className = 'special-marker-player';
+  markerBg.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;';
+  const iconDiv = wrapper.querySelector('.node-icon');
+  if (iconDiv) wrapper.insertBefore(markerBg, iconDiv); else wrapper.prepend(markerBg);
+
+  const pin = document.createElement('div');
+  pin.className = 'player-pin';
+  pin.textContent = '📍';
+  wrapper.appendChild(pin);
+
+  const badge = document.createElement('div');
+  badge.className = 'special-badge-player';
+  badge.textContent = '你在这里';
+  wrapper.appendChild(badge);
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'mvu_location' && e.data.位置) {
+    _mvuLocation = e.data.位置;
+    updatePlayerLocation();
+  }
+});
+
+// 通知宿主本页已就绪，请求立即推送一次位置
+try { window.parent.postMessage({ type: 'map_ready' }, '*'); } catch (e) {}
 
 // ============ INIT ============
 function init() {
