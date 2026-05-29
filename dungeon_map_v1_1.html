@@ -182,6 +182,14 @@ html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; backgro
       <textarea id="f-note" placeholder="可留空。如需手动指定场所/目标，可在此补充，否则全部依据剧情自动生成"></textarea>
     </div>
 
+    <div class="form-group">
+      <label>生成模式</label>
+      <select id="f-mode">
+        <option value="clean" selected>干净模式（推荐·只发提示词，成功率高）</option>
+        <option value="preset">破限模式（额外带预设+世界书）</option>
+      </select>
+    </div>
+
     <button id="generate-btn">生成地图</button>
 
     <div id="progress">
@@ -193,6 +201,14 @@ html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; backgro
       <button class="action-btn" id="apply-btn">应用到聊天</button>
       <button class="action-btn" id="export-btn">导出 JSON</button>
       <button class="action-btn" id="copy-btn">复制 JSON</button>
+    </div>
+
+    <div id="debug-box" style="margin-top:14px; display:none;">
+      <div style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;" id="debug-toggle">
+        <span style="font-size:11px; color:#8a7a5a; font-weight:600;">调试 · 最近一次响应</span>
+        <span style="font-size:10px; color:#8a7a5a;" id="debug-caret">展开 ▼</span>
+      </div>
+      <pre id="debug-log" style="display:none; margin-top:6px; max-height:240px; overflow:auto; background:rgba(0,0,0,0.35); border:1px solid rgba(200,184,138,0.15); border-radius:6px; padding:8px; font-size:11px; line-height:1.5; white-space:pre-wrap; word-break:break-word; color:#bcb89a; font-family:ui-monospace,Consolas,monospace;"></pre>
     </div>
   </div>
 
@@ -345,8 +361,26 @@ function renderContextBanner() {
 }
 
 // ==================== 调用 LLM（经宿主代理） ====================
+// genMode：'clean'（generateRaw，不带预设/世界书，JSON 成功率高）
+//          'preset'（generate，额外拼接酒馆预设+世界书，可破限但易掺杂散文）
+let genMode = 'clean';
+
+// 记录每一步的原始响应，便于排查"生成失败"
+let lastRawResponses = [];
+
+function logDebug(step, raw) {
+  const text = (raw == null ? '(空响应)' : String(raw));
+  lastRawResponses.push(`【${step}】\n${text}`);
+  console.log(`[子地图生成器] ${step} 原始响应:`, raw);
+  const box = $('debug-box'), log = $('debug-log');
+  if (box && log) {
+    box.style.display = 'block';
+    log.textContent = lastRawResponses.join('\n\n──────────\n\n');
+  }
+}
+
 async function callLLM(systemPrompt, userPrompt) {
-  return await callHostRPC('llm', { systemPrompt, userPrompt });
+  return await callHostRPC('llm', { systemPrompt, userPrompt, mode: genMode });
 }
 
 // ==================== SKILL 提示词构建 ====================
@@ -613,6 +647,8 @@ function getNeighborSummaries(batchIds, edges, completed) {
 async function generate() {
   const size = parseInt($('f-size').value);
   const note = $('f-note').value.trim();
+  genMode = $('f-mode').value || 'clean';
+  lastRawResponses = [];
 
   const btn = $('generate-btn');
   btn.disabled = true;
@@ -629,13 +665,17 @@ async function generate() {
     setProgress(10, '步骤 1/3：生成节点骨架...');
     const skeletonPrompt = buildSkeletonPrompt({ ctx, note, size, history });
     let skeletonResp = await callLLM(skeletonPrompt, '生成节点骨架。');
+    logDebug('步骤1·骨架', skeletonResp);
     let skeletonData = safeParseJson(skeletonResp);
     if (!skeletonData?.nodes?.length) {
       // 重试一次
-      setProgress(15, '骨架生成失败，重试...');
-      skeletonResp = await callLLM(skeletonPrompt, '生成节点骨架，严格输出JSON。');
+      setProgress(15, '骨架解析失败，重试一次...');
+      skeletonResp = await callLLM(skeletonPrompt, '只输出严格 JSON，不要任何解释或散文。');
+      logDebug('步骤1·骨架(重试)', skeletonResp);
       skeletonData = safeParseJson(skeletonResp);
-      if (!skeletonData?.nodes?.length) throw new Error('骨架生成失败');
+      if (!skeletonData?.nodes?.length) {
+        throw new Error('骨架生成失败：未能从响应中解析出 JSON。展开下方"调试"查看模型实际返回的内容（多半是带了散文/被截断）。');
+      }
     }
     const nodes = skeletonData.nodes.map(n => ({ ...n, x: 0, y: 0 }));
     const title = skeletonData.title || getPlaceName(ctx, note);
@@ -644,6 +684,7 @@ async function generate() {
     setProgress(35, '步骤 2/3：生成连接关系...');
     const edgesPrompt = buildEdgesPrompt(nodes);
     let edgesResp = await callLLM(edgesPrompt, '生成连接关系。');
+    logDebug('步骤2·连接', edgesResp);
     let edgesData = safeParseJson(edgesResp);
     let edges = edgesData?.edges || [];
 
@@ -669,6 +710,7 @@ async function generate() {
     }
 
     const completed = {};
+    let fillFailures = 0;
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
       const progress = 50 + Math.floor((i / batches.length) * 45);
@@ -682,6 +724,7 @@ async function generate() {
 
       try {
         const fillResp = await callLLM(fillPrompt, '填充节点内容。');
+        logDebug(`步骤3·填充(${i+1}/${batches.length})`, fillResp);
         const fillData = safeParseJson(fillResp);
         if (fillData?.rooms) {
           fillData.rooms.forEach(r => {
@@ -694,9 +737,12 @@ async function generate() {
               node.secrets = r.secrets || '';
             }
           });
+        } else {
+          fillFailures++;
         }
       } catch (e) {
-        console.warn(`[子地图生成器] 批次 ${i+1} 填充失败:`, e);
+        fillFailures++;
+        logDebug(`步骤3·填充(${i+1}/${batches.length}) 异常`, (e && e.message) || e);
         // 降级：空描述继续
         batch.forEach(n => {
           n.summary = ''; n.monsters = ''; n.environmentFeatures = ''; n.secrets = '';
@@ -709,12 +755,20 @@ async function generate() {
 
     // ===== 完成 =====
     currentMapData = { title, nodes, edges };
-    setProgress(100, `生成完成：${nodes.length} 个节点，${edges.length} 条连接`);
+    const warn = fillFailures ? `（其中 ${fillFailures} 批内容未解析成功，可展开调试查看）` : '';
+    setProgress(100, `生成完成：${nodes.length} 个节点，${edges.length} 条连接${warn}`);
     $('actions').classList.add('active');
     renderMap();
   } catch (e) {
     console.error(e);
     setProgress(0, '生成失败：' + e.message, true);
+    // 失败时自动展开调试面板，方便查看模型实际返回
+    const box = $('debug-box'), log = $('debug-log'), caret = $('debug-caret');
+    if (box && log && lastRawResponses.length) {
+      box.style.display = 'block';
+      log.style.display = 'block';
+      if (caret) caret.textContent = '收起 ▲';
+    }
   } finally {
     btn.disabled = false;
   }
@@ -882,6 +936,14 @@ $('copy-btn').addEventListener('click', async () => {
 
 $('generate-btn').addEventListener('click', generate);
 $('ctx-refresh').addEventListener('click', () => { loadHostContext(); });
+
+// 调试面板展开/收起
+$('debug-toggle').addEventListener('click', () => {
+  const log = $('debug-log'), caret = $('debug-caret');
+  const open = log.style.display === 'block';
+  log.style.display = open ? 'none' : 'block';
+  if (caret) caret.textContent = open ? '展开 ▼' : '收起 ▲';
+});
 
 // 页面加载后尝试拉取一次剧情上下文（嵌入酒馆时生效）
 loadHostContext();
