@@ -13,14 +13,14 @@
   --jade:#bfe3cf;
   --water:#9fd6ea;
   --road:#e0bf86;
-  --line:rgba(190,222,200,0.28);
-  --line-soft:rgba(190,222,200,0.14);
-  --panel:rgba(28,52,60,0.92);
+  --line:rgba(200,212,234,0.26);
+  --line-soft:rgba(200,212,234,0.13);
+  --panel:rgba(34,42,60,0.92);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body { width:100%; height:100%; overflow:hidden; font-family:'Noto Serif SC',serif; }
 body {
-  background: radial-gradient(ellipse at 44% 34%, #6a8d97 0%, #547680 38%, #3f5f69 70%, #314d56 100%);
+  background: linear-gradient(135deg, #2b3a4a 0%, #5f7b98 40%, #1a2535 100%);
   color: var(--paper);
 }
 /* fine paper/parchment noise */
@@ -31,7 +31,7 @@ body::before {
 /* soft vignette */
 body::after {
   content:''; position:fixed; inset:0; z-index:1; pointer-events:none;
-  background: radial-gradient(ellipse at center, transparent 58%, rgba(22,40,46,0.42) 100%);
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(10, 15, 20, 0.5) 100%);
 }
 #map-container { position:relative; width:100%; height:100%; z-index:2; overflow:hidden; cursor:grab; }
 #map-container.grabbing { cursor:grabbing; }
@@ -105,7 +105,7 @@ body::after {
 .detail-overlay.active { display:flex; }
 .detail-panel {
   position:relative; width:90%; max-width:760px; max-height:86vh;
-  background: linear-gradient(160deg, rgba(20,40,46,0.98) 0%, rgba(12,26,32,0.98) 100%);
+  background: linear-gradient(160deg, rgba(34,42,60,0.98) 0%, rgba(22,28,42,0.98) 100%);
   border:1px solid var(--line); border-radius:10px;
   overflow-y:auto; padding:0;
   box-shadow: 0 12px 50px rgba(0,0,0,0.7), 0 0 70px rgba(143,202,173,0.05);
@@ -138,7 +138,7 @@ body::after {
 /* Legend */
 #legend {
   position:fixed; bottom:18px; left:18px; z-index:100;
-  background:rgba(20,40,46,0.9); border:1px solid var(--line);
+  background:rgba(32,40,58,0.9); border:1px solid var(--line);
   border-radius:8px; padding:10px 14px; font-size:11px;
   max-width:60vw;
 }
@@ -158,14 +158,14 @@ body::after {
 /* Minimap */
 #minimap {
   position:fixed; bottom:18px; right:18px; z-index:100;
-  width:210px; height:165px; border:1px solid var(--line);
-  border-radius:6px; background:rgba(20,40,46,0.9);
+  width:150px; height:118px; border:1px solid var(--line);
+  border-radius:6px; background:rgba(32,40,58,0.85);
 }
 
 /* Filter bar */
 #filter-bar {
   position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:100;
-  display:flex; gap:5px; background:rgba(20,40,46,0.9); border:1px solid var(--line);
+  display:flex; gap:5px; background:rgba(32,40,58,0.9); border:1px solid var(--line);
   border-radius:8px; padding:6px 10px; flex-wrap:wrap; max-width:92vw; justify-content:center;
 }
 .filter-btn {
@@ -188,7 +188,7 @@ body::after {
 #zoom-controls { position:fixed; top:14px; right:18px; z-index:100; display:flex; flex-direction:column; gap:4px; }
 .zoom-btn {
   width:34px; height:34px; border:1px solid var(--line);
-  background:rgba(20,40,46,0.9); color:var(--jade);
+  background:rgba(32,40,58,0.9); color:var(--jade);
   font-size:18px; cursor:pointer; border-radius:5px;
   display:flex; align-items:center; justify-content:center; font-family:'Noto Serif SC',serif;
 }
@@ -197,7 +197,7 @@ body::after {
 /* Tooltip */
 #tooltip {
   position:fixed; display:none; z-index:300; pointer-events:none; max-width:300px;
-  background:rgba(20,40,46,0.97); border:1px solid var(--line);
+  background:rgba(32,40,58,0.97); border:1px solid var(--line);
   border-radius:6px; padding:9px 13px; font-size:12px;
   color:#d2ddd0; box-shadow: 0 4px 16px rgba(0,0,0,0.6);
 }
@@ -575,9 +575,27 @@ rawEdges.forEach(e => {
 // 1) 先做防重叠，拉开过密的节点
 relaxPositions();
 
-// 2) 自动构建路网：地理节点用 Gabriel 邻近图，门派单独锚定
+// 2) 路网：优先读取数据文件中固化的路网（含 terrain/kind/dist/cost）；
+//    若数据未固化（旧格式），则按坐标实时生成（Gabriel）作为回退。
 let edges = [];
 (function buildNetwork(){
+  const baked = rawEdges.filter(e => (e.from || e.source) && (e.to || e.target) && (e.terrain || e.kind));
+  if (baked.length) {
+    baked.forEach(e => {
+      const a = e.from || e.source, b = e.to || e.target;
+      if (!nodeMap[a] || !nodeMap[b]) return;
+      const kind = e.kind || (e.terrain === 'sect' ? 'sect' : 'route');
+      edges.push({
+        from: a, to: b,
+        label: e.label || '',
+        terrain: e.terrain || (kind === 'sect' ? 'sect' : 'land'),
+        kind,
+        dist: e.dist, cost: e.cost
+      });
+    });
+    return;
+  }
+  // —— 回退：按坐标实时生成 ——
   const geo = nodes.filter(n => GEO_TYPES.has(n.type));
   const seen = new Set();
   const addRoute = (a, b) => {
@@ -939,7 +957,7 @@ function drawEdgeLabels(drawList) {
     }
 
     const st = terrainStyles[cat];
-    ctx.fillStyle = 'rgba(20,40,46,0.86)';
+    ctx.fillStyle = 'rgba(32,40,58,0.86)';
     ctx.beginPath();
     ctx.roundRect(mx - pw/2, my - ph/2, pw, ph, 4);
     ctx.fill();
@@ -1014,14 +1032,14 @@ document.getElementById('zoom-reset').addEventListener('click', () => { scale = 
 // ============ MINIMAP ============
 function renderMinimap() {
   const dpr = devicePixelRatio || 1;
-  const mw = 210, mh = 165;
+  const mw = 150, mh = 118;
   minimap.width = mw * dpr;
   minimap.height = mh * dpr;
   minimap.style.width = mw + 'px';
   minimap.style.height = mh + 'px';
   minimapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   minimapCtx.clearRect(0, 0, mw, mh);
-  minimapCtx.fillStyle = 'rgba(10,22,28,0.7)';
+  minimapCtx.fillStyle = 'rgba(18,24,38,0.8)';
   minimapCtx.fillRect(0, 0, mw, mh);
 
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
