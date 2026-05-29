@@ -137,7 +137,9 @@ iconify-icon { display:inline-block; width:1em; height:1em; line-height:1; }
   animation:mysteryPulse 1.6s ease-in-out infinite;
 }
 .node-wrapper.mystery .node-q {
-  font-size:24px; font-weight:800; color:#cbb3ff; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  width:100%; height:100%;
+  font-size:22px; font-weight:800; color:#cbb3ff; line-height:1;
   text-shadow:0 0 8px rgba(177,140,255,0.9);
 }
 @keyframes mysteryPulse {
@@ -1065,15 +1067,11 @@ function renderNodes() {
         wrapper.className = 'node-wrapper mystery';
         const icon = document.createElement('div');
         icon.className = 'node-icon';
-        icon.innerHTML = `<span class="node-disc" style="--nc:#b18cff; box-shadow:0 2px 6px rgba(0,0,0,0.5), inset 0 0 5px rgba(0,0,0,0.45);"><span class="node-q">？</span></span>`;
+        icon.innerHTML = `<span class="node-disc" style="--nc:#b18cff; box-shadow:0 2px 6px rgba(0,0,0,0.5), inset 0 0 5px rgba(0,0,0,0.45);"><span class="node-q">?</span></span>`;
         wrapper.appendChild(icon);
-        const label = document.createElement('div');
-        label.className = 'node-label';
-        label.textContent = '？';
-        wrapper.appendChild(label);
         const badge = document.createElement('div');
         badge.className = 'node-mystery-badge';
-        badge.textContent = '可探查';
+        badge.textContent = '？可探查';
         wrapper.appendChild(badge);
         wrapper.addEventListener('click', e => { e.stopPropagation(); openMysteryDetail(n); });
         nodeLayer.appendChild(wrapper);
@@ -1522,7 +1520,7 @@ async function exploreNode(node) {
   if (!node || !currentMapData) return;
   const base = (currentMapData.title || '').trim();
   const placePath = base ? `${base}${NODE_SEP}${node.name}` : node.name;
-  const text = `探索${node.name}（请将场所更新为「${placePath}」）`;
+  const text = `尝试移动至柴房并探索${node.name}`;
   try {
     const ok = await tavernSendMessage(text);
     if (!ok) throw new Error('写入失败');
