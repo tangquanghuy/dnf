@@ -225,7 +225,7 @@ html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; backgro
     </div>
 
     <div id="actions">
-      <button class="action-btn" id="apply-btn">应用到聊天</button>
+      <button class="action-btn" id="apply-btn">重写世界书</button>
       <button class="action-btn" id="export-btn">导出 JSON</button>
       <button class="action-btn" id="copy-btn">复制 JSON</button>
     </div>
@@ -839,6 +839,7 @@ async function generate() {
 
     // ===== 完成 =====
     currentMapData = { title, nodes, edges };
+    saveMapCache();   // 写入本地缓存，刷新/切页后可恢复
     const warn = fillFailures ? `（其中 ${fillFailures} 批内容未解析成功，可展开调试查看）` : '';
     setProgress(100, `生成完成：${nodes.length} 个节点，${edges.length} 条连接${warn}`);
     $('actions').classList.add('active');
@@ -1042,7 +1043,7 @@ async function writeDungeonToWorldbook() {
     entryName: '副本地图',
     title: currentMapData.title,
     content,
-    keywords: []   // 空 → 常驻注入，主AI始终掌握当前副本
+    keywords: ['副本地图']   // 绿灯：由「副本地图」四字触发激活
   }, 20000);
 }
 
@@ -1052,6 +1053,39 @@ function setPanelCollapsed(collapsed) {
   const toggle = $('panel-toggle');
   if (panel) panel.classList.toggle('collapsed', !!collapsed);
   if (toggle) toggle.style.display = collapsed ? 'flex' : 'none';
+}
+
+// ==================== 本地缓存（刷新/切页后仍保留上次生成的地图，直到下次生成覆盖）====================
+const MAP_CACHE_KEY = 'dungeon_map_last_v1';
+
+function saveMapCache() {
+  try {
+    if (currentMapData) localStorage.setItem(MAP_CACHE_KEY, JSON.stringify(currentMapData));
+  } catch (e) { /* 隐私模式/超额时忽略 */ }
+}
+
+function loadMapCache() {
+  try {
+    const raw = localStorage.getItem(MAP_CACHE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.nodes) || !data.nodes.length) return false;
+    currentMapData = data;
+    $('actions').classList.add('active');
+    renderMap();
+    return true;
+  } catch (e) { return false; }
+}
+
+// 手动重写世界书「副本地图」条目
+async function rewriteWorldbookManually() {
+  if (!currentMapData) { showToast('当前没有地图可写入', 'error'); return; }
+  try {
+    const res = await writeDungeonToWorldbook();
+    showToast(`已写入世界书「副本地图」（${res?.worldbookName || ''}）`, 'success');
+  } catch (e) {
+    showToast('写入世界书失败：' + (e.message || e), 'error');
+  }
 }
 
 $('export-btn').addEventListener('click', () => {
@@ -1093,8 +1127,16 @@ $('debug-toggle').addEventListener('click', () => {
   if (caret) caret.textContent = open ? '展开 ▼' : '收起 ▲';
 });
 
-// 开始时自动展开生成器
-setPanelCollapsed(false);
+// 开始时：有缓存的地图则恢复并收起表单，否则展开生成器
+(function restoreOnLoad() {
+  if (loadMapCache()) {
+    // loadMapCache 已恢复 currentMapData 并渲染
+    setPanelCollapsed(true);
+    setTimeout(() => { if (currentMapData) renderMap(); }, 320);  // 等收起动画结束后重新居中
+  } else {
+    setPanelCollapsed(false);
+  }
+})();
 
 // 页面加载后尝试拉取一次剧情上下文（嵌入酒馆时生效）
 loadHostContext();
@@ -1123,38 +1165,6 @@ async function tavernSetVar(key, value) {
   } catch (e) {
     console.warn('[子地图] set_var 失败:', e);
     return false;
-  }
-}
-
-// 把整张副本应用到聊天（让主AI知道副本结构）
-async function applyDungeonToChat() {
-  if (!currentMapData) return;
-
-  const summary = {
-    title: currentMapData.title,
-    nodeCount: currentMapData.nodes.length,
-    nodes: currentMapData.nodes.map(n => ({
-      id: n.id, name: n.name, type: n.type
-    })),
-    edges: currentMapData.edges
-  };
-
-  // 1. postMessage 通知父窗口
-  notifyHost('dungeon_applied', { dungeon: currentMapData });
-
-  // 2. 通过 STscript 写入聊天变量
-  const ok = await tavernSetVar('当前副本', summary);
-
-  if (ok) {
-    showToast('已应用到聊天变量「当前副本」', 'success');
-  } else {
-    // 降级：复制到剪贴板让用户手动处理
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(summary, null, 2));
-      showToast('已复制副本数据到剪贴板（请手动粘贴或配置酒馆桥接）', 'success');
-    } catch {
-      showToast('应用失败，请检查酒馆环境', 'error');
-    }
   }
 }
 
@@ -1222,7 +1232,7 @@ async function copyNodeDesc(node) {
 nodeLayer.addEventListener('click', () => {}, true);
 
 // 重写按钮事件
-$('apply-btn').addEventListener('click', applyDungeonToChat);
+$('apply-btn').addEventListener('click', rewriteWorldbookManually);
 $('detail-enter-btn').addEventListener('click', () => enterNode(activeDetailNode));
 $('detail-copy-btn').addEventListener('click', () => copyNodeDesc(activeDetailNode));
 </script>
