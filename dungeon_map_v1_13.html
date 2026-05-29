@@ -596,23 +596,32 @@ function getPlaceName(ctx, note) {
   return '当前场所';
 }
 
-function buildSkeletonPrompt({ ctx, note, size, history }) {
+function buildStructurePrompt({ ctx, note, size, history }) {
   const contextBlock = buildContextBlock(ctx, note);
   const place = getPlaceName(ctx, note);
   return `${COMMON_HEADER}
 
-【任务：生成节点骨架（步骤 1）】
-采用叙事优先模式：结合"当前场景""近期剧情上下文"以及已激活世界书的设定，自行推断玩家此行的目标与该场所应有的空间结构，设计节点布局。关键叙事节点必须存在，并在其间填入合理的过渡节点。若信息不足，则按场所类型的常见空间逻辑补全。
+【任务：一次性生成地图结构——节点 + 连接（步骤 1）】
+采用叙事优先模式：结合"当前场景""近期剧情上下文"以及已激活世界书的设定，自行推断玩家此行的目标与该场所应有的空间结构，设计节点布局并把它们用通路连成一张图。关键叙事节点必须存在，并在其间填入合理的过渡节点。若信息不足，则按场所类型的常见空间逻辑补全。
 ${contextBlock}${HISTORY_BLOCK(history)}
 【规模】共 ${size} 个节点
 
-【要求】
+【节点要求】
 - 必须有 id="entrance" 的入口节点
 - 必须有 id="exit" 的出口节点（可以是 Boss 房或线索终点）
 - title 用简洁具体的场所名（参考当前地点：${place}）
 - 节点命名要具体有画面感（参考"节点命名规则"）
 - type 选择合理（参考"节点 type 取值"）
-- 输出量上限 500 字符，保持精简
+
+【连接要求】
+- 严格遵守"连接数硬性上限"段中的边数限制
+- 所有节点必须从 entrance 可达
+- 必须有分支路径，禁止纯线性
+- entrance 只能作为 source（不能有入边）
+- exit 只能作为 target（不能有出边）
+- label 描述通道特征：石阶、铁门、暗道、破墙、走廊、藤蔓垂落的裂缝等具体词汇
+
+【输出量上限】900 字符，保持精简
 
 【输出格式】
 {
@@ -620,32 +629,9 @@ ${contextBlock}${HISTORY_BLOCK(history)}
   "nodes": [
     {"id": "entrance", "name": "正门", "type": "entrance"},
     {"id": "...", "name": "...", "type": "..."}
-  ]
-}`;
-}
-
-function buildEdgesPrompt(nodes) {
-  const list = nodes.map(n => `${n.id} | ${n.name} | ${n.type}`).join('\n');
-  return `${COMMON_HEADER}
-
-【任务：生成连接关系（步骤 2）】
-
-【节点列表】
-${list}
-
-【规则】
-- 严格遵守"连接数硬性上限"段中的边数限制
-- 所有节点必须从 entrance 可达
-- 必须有分支路径，禁止纯线性
-- entrance 只能作为 source（不能有入边）
-- exit 只能作为 target（不能有出边）
-- label 描述通道特征：石阶、铁门、暗道、破墙、走廊、藤蔓垂落的裂缝等具体词汇
-- 输出量上限 400 字符
-
-【输出格式】
-{
+  ],
   "edges": [
-    {"source": "entrance", "target": "hall_01", "label": "石阶向下"}
+    {"source": "entrance", "target": "...", "label": "石阶向下"}
   ]
 }`;
 }
@@ -657,7 +643,7 @@ function buildFillPrompt({ title, ctx, note, history, level, batch, neighbors })
 
   return `${COMMON_HEADER}
 
-【任务：填充节点内容（步骤 3，按批次）】
+【任务：一次性填充全部节点内容（步骤 2）】
 
 【场所名称】${title}
 ${contextBlock}${HISTORY_BLOCK(history)}
@@ -845,37 +831,29 @@ async function generate() {
       console.warn('[子地图] 清除旧副本地图条目失败（忽略，继续生成）:', e);
     }
 
-    // ===== Step 1: 生成骨架 =====
-    setProgress(10, '步骤 1/3：生成节点骨架...');
-    const skeletonPrompt = buildSkeletonPrompt({ ctx, note, size, history });
-    let skeletonResp = await callLLM(skeletonPrompt, '生成节点骨架。');
-    logDebug('步骤1·骨架', skeletonResp);
-    let skeletonData = safeParseJson(skeletonResp, 'nodes');
-    if (!skeletonData?.nodes?.length) {
+    // ===== Step 1: 一次性生成结构（节点 + 连接） =====
+    setProgress(15, '步骤 1/2：生成地图结构（节点+连接）...');
+    const structPrompt = buildStructurePrompt({ ctx, note, size, history });
+    let structResp = await callLLM(structPrompt, '生成地图结构。');
+    logDebug('步骤1·结构', structResp);
+    let structData = safeParseJson(structResp, 'nodes');
+    if (!structData?.nodes?.length) {
       // 重试一次
-      setProgress(15, '骨架解析失败，重试一次...');
-      skeletonResp = await callLLM(skeletonPrompt, '只输出严格 JSON，不要任何解释或散文。');
-      logDebug('步骤1·骨架(重试)', skeletonResp);
-      skeletonData = safeParseJson(skeletonResp, 'nodes');
-      if (!skeletonData?.nodes?.length) {
-        throw new Error('骨架生成失败：未能从响应中解析出 JSON。展开下方"调试"查看模型实际返回的内容（多半是带了散文/被截断）。');
+      setProgress(20, '结构解析失败，重试一次...');
+      structResp = await callLLM(structPrompt, '只输出严格 JSON，不要任何解释或散文。');
+      logDebug('步骤1·结构(重试)', structResp);
+      structData = safeParseJson(structResp, 'nodes');
+      if (!structData?.nodes?.length) {
+        throw new Error('结构生成失败：未能从响应中解析出 JSON。展开下方"调试"查看模型实际返回的内容（多半是带了散文/被截断）。');
       }
     }
-    const nodes = skeletonData.nodes.map(n => ({ ...n, x: 0, y: 0 }));
-    const title = skeletonData.title || getPlaceName(ctx, note);
+    const nodes = structData.nodes.map(n => ({ ...n, x: 0, y: 0 }));
+    const title = structData.title || getPlaceName(ctx, note);
 
-    // ===== Step 2: 生成连接 =====
-    setProgress(35, '步骤 2/3：生成连接关系...');
-    const edgesPrompt = buildEdgesPrompt(nodes);
-    let edgesResp = await callLLM(edgesPrompt, '生成连接关系。');
-    logDebug('步骤2·连接', edgesResp);
-    let edgesData = safeParseJson(edgesResp, 'edges');
-    let edges = edgesData?.edges || [];
-
+    // 连接：优先取本次结构里的 edges；解析不到则降级线性兜底
+    let edges = Array.isArray(structData.edges) ? structData.edges : [];
     if (!edges.length) {
-      // 降级：线性兜底
-      console.warn('[子地图生成器] 连接生成失败，使用线性兜底');
-      edges = [];
+      console.warn('[子地图生成器] 结构中无连接，使用线性兜底');
       for (let i = 0; i < nodes.length - 1; i++) {
         edges.push({ source: nodes[i].id, target: nodes[i+1].id, label: '通道' });
       }
@@ -886,62 +864,44 @@ async function generate() {
     if (isolated.length) repairIsolated(edges, isolated, nodes);
     assignCoordinates(nodes, edges);
 
-    // ===== Step 3: 分批填充 =====
-    const BATCH_SIZE = 3;
-    const batches = [];
-    for (let i = 0; i < nodes.length; i += BATCH_SIZE) {
-      batches.push(nodes.slice(i, i + BATCH_SIZE));
-    }
-
-    const completed = {};
+    // ===== Step 2: 一次性填充全部节点（单次 API） =====
+    setProgress(55, '步骤 2/2：填充全部节点内容...');
     let fillFailures = 0;
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i];
-      const progress = 50 + Math.floor((i / batches.length) * 45);
-      setProgress(progress, `步骤 3/3：填充内容（${i+1}/${batches.length}）...`);
-
-      const neighbors = getNeighborSummaries(batch.map(n => n.id), edges, completed);
-      const fillPrompt = buildFillPrompt({
-        title, ctx, note, history, level,
-        batch, neighbors
-      });
-
-      try {
-        const fillResp = await callLLM(fillPrompt, '填充节点内容。');
-        logDebug(`步骤3·填充(${i+1}/${batches.length})`, fillResp);
-        const fillData = safeParseJson(fillResp, 'rooms');
-        if (fillData?.rooms) {
-          fillData.rooms.forEach(r => {
-            completed[r.id] = r;
-            const node = nodes.find(n => n.id === r.id);
-            if (node) {
-              node.summary = r.summary || '';
-              node.hook = r.hook || '';
-              node.monsters = r.monsters || '';
-              node.environmentFeatures = r.environmentFeatures || '';
-              node.secrets = r.secrets || '';
-            }
-          });
-        } else {
-          fillFailures++;
-        }
-      } catch (e) {
-        fillFailures++;
-        logDebug(`步骤3·填充(${i+1}/${batches.length}) 异常`, (e && e.message) || e);
-        // 降级：空描述继续
-        batch.forEach(n => {
-          n.summary = ''; n.hook = ''; n.monsters = ''; n.environmentFeatures = ''; n.secrets = '';
+    const fillPrompt = buildFillPrompt({
+      title, ctx, note, history, level,
+      batch: nodes, neighbors: ''
+    });
+    try {
+      const fillResp = await callLLM(fillPrompt, '一次性填充全部节点内容。');
+      logDebug('步骤3·填充(全部)', fillResp);
+      const fillData = safeParseJson(fillResp, 'rooms');
+      if (fillData?.rooms) {
+        fillData.rooms.forEach(r => {
+          const node = nodes.find(n => n.id === r.id);
+          if (node) {
+            node.summary = r.summary || '';
+            node.hook = r.hook || '';
+            node.monsters = r.monsters || '';
+            node.environmentFeatures = r.environmentFeatures || '';
+            node.secrets = r.secrets || '';
+          }
         });
+      } else {
+        fillFailures = nodes.length;
       }
-
-      // 短暂延迟避免 API 过载
-      if (i < batches.length - 1) await new Promise(r => setTimeout(r, 200));
+    } catch (e) {
+      fillFailures = nodes.length;
+      logDebug('步骤3·填充(全部) 异常', (e && e.message) || e);
+      // 降级：空描述继续，至少保留地图结构
+      nodes.forEach(n => {
+        n.summary = ''; n.hook = ''; n.monsters = ''; n.environmentFeatures = ''; n.secrets = '';
+      });
     }
 
     // ===== 完成 =====
     currentMapData = { title, nodes, edges };
     saveMapCache();   // 写入本地缓存，刷新/切页后可恢复
-    const warn = fillFailures ? `（其中 ${fillFailures} 批内容未解析成功，可展开调试查看）` : '';
+    const warn = fillFailures ? `（节点内容未解析成功，可展开调试查看）` : '';
     setProgress(100, `生成完成：${nodes.length} 个节点，${edges.length} 条连接${warn}`);
     $('actions').classList.add('active');
     renderMap();
