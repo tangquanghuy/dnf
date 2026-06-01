@@ -1239,6 +1239,20 @@ var MAP_JSON_DATA = {
         "specialty": "草木辨识（眼观形色鼻闻气味舌辨药性）、丹方推衍（脑中模拟配伍预判成败）、外伤续骨（药膏外敷配合真炁推拿断骨数日愈合）。"
       },
       {
+        "id": "sect_tangmen",
+        "name": "唐门",
+        "type": "sect",
+        "x": 85,
+        "y": 188,
+        "tier": "第一暗杀门派",
+        "dangerLevel": "★★★★☆",
+        "summary": "蜀中唐门，传承千年的刺客世家，最初为唐姓宗族；四百年前破除只收唐姓的旧规，从此分为内外两门，成为异人界最令人忌惮的势力之一。驻地重庆唐家堡，不供祖师，创派人据传为女性却无从考证。以隐匿、暗杀、用毒、暗器与机关术闻名天下，奉行“照方抓药，下单埋人”，是异人界公认的第一暗杀门派。",
+        "role": "中立。不参与江湖正邪之争，只认委托不认人，“无论善恶，照方抓药”。但大义当前绝不含糊，与全性划清界限、羞于与之为伍。",
+        "footprint": "蜀中·重庆唐家堡。门内禁地“唐冢”供奉历代先辈，亦是囚禁重要人物与传承最高绝学之地。",
+        "publicFace": "刺客的代名词，江湖公认第一暗杀门派，令人闻之色变。世人只知其“照方抓药、下单埋人”，门规之森严鲜有人知。",
+        "specialty": "五宝护身法（调脏炁炼毒并以脾土肝木之炁结护膜自保）、乌梢甲（将毒炁炼入皮肉结乌黑甲片，防御强悍）、毒障（炁毒护体屏障，强度不输金光咒，接触即侵蚀、毒不走血放血难解）、炁毒（化气为毒，可喷毒雾或凝竹叶青等形态攻击）、丹噬（至高暗杀之技，无心无影无药可解专破经脉，门槛极高失败必死）、观自在心法（控情绪练心态，深处可隐匿行动与出招轨迹并看穿对方招数）、幻身障（高级隐身术，配合暗器近身爆发抢先手）、瞬击（迅捷近身刺杀，末击绝对精准）、隐线（极细锋利丝线进攻束敌或布陷阱，黑夜难察）、土木流注（土木二炁反运经络瞬间恢复体能、大幅提速但易暴露）、观圆（炼器至宝，方圆数里敌人无所遁形）。",
+      },
+      {
         "id": "sect_saman",
         "name": "萨满（出马仙）",
         "type": "sect",
@@ -1687,6 +1701,7 @@ var MAP_JSON_DATA = {
       { "from": "sect_huode", "to": "city_chengdu", "label": "门派小径", "terrain": "sect", "kind": "sect" },
       { "from": "sect_liangshan", "to": "city_chengdu", "label": "门派小径", "terrain": "sect", "kind": "sect" },
       { "from": "sect_baicao", "to": "city_chengdu", "label": "门派小径", "terrain": "sect", "kind": "sect" },
+      { "from": "sect_tangmen", "to": "city_chongqing", "label": "门派小径", "terrain": "sect", "kind": "sect" },
       { "from": "sect_saman", "to": "wilderness_baishanheishui", "label": "门派小径", "terrain": "sect", "kind": "sect" },
       { "from": "sect_wuliu", "to": "wilderness_baishanheishui", "label": "门派小径", "terrain": "sect", "kind": "sect" },
       { "from": "sect_wulou", "to": "garrison_andong", "label": "门派小径", "terrain": "sect", "kind": "sect" },
