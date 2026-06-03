@@ -1348,7 +1348,7 @@ var MAP_JSON_DATA = {
         "role": "曾经的顶尖剑修门派，门派精锐凋零逐渐式微。但剑法传承仍在。",
         "footprint": "江南·福州府。",
         "publicFace": "昔日辉煌已不再，但偶有天才弟子出世仍能惊艳四方。",
-        "specialty": "流云剑法（剑修天赋要求极高的上乘剑术）。"
+        "specialty": "流云剑法，一生养一剑。"
       },
       {
         "id": "sect_quanxing",
