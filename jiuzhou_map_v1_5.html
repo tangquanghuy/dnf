@@ -831,7 +831,7 @@ function renderNodes() {
     wrapper.addEventListener('click', (ev) => {
       ev.stopPropagation();
       tooltip.style.display = 'none';
-      if (IS_SPAWN_SELECT_MODE) emitSpawnSelection(n);
+      if (IS_SPAWN_SELECT_MODE && n.type !== 'sect') emitSpawnSelection(n);
       else openDetail(n);
     });
 
