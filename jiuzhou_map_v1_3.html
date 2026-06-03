@@ -612,6 +612,7 @@ const FIELD_LABELS = {
   threats: '祸患', curiosities: '异闻', socialColor: '风情',
   role: '定位', footprint: '据点', publicFace: '外界形象', specialty: '专长',
   methods: '手段', relationToState: '与朝堂',
+  structure: '架构', coreMembers: '核心人员', characteristics: '特点',
   manifestation: '显现', threatScale: '威胁等级', habits: '习性', officialView: '官方说法',
 };
 const SKIP_FIELDS = new Set(['id','name','type','x','y','tier','dangerLevel','summary','brief']);
@@ -1047,6 +1048,9 @@ function getSpawnBlockedReason(node) {
 function buildSpawnSelectionPayload(node) {
   const name = node.name || '';
   return {
+    type: node.type || '',
+    specialty: node.specialty || '',
+    methods: node.methods || '',
     名称: name, 大陆: '九州', 区域: name, 场所: name,
     层级: node.tier || '', 地区等级: node.dangerLevel || '', 危险等级: node.dangerLevel || '',
     地貌特征: node.landscape || node.summary || '',
