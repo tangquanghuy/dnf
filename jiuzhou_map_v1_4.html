@@ -1041,6 +1041,7 @@ const SPAWN_CHANNEL = 'jiuzhou-spawn-map';
 // 法尸禁地为敌对污染区，不能作为出生点
 function getSpawnBlockedReason(node) {
   if (!node) return '';
+  if (node.type === 'sect') return '门派驻地不可作为出生点，请先选择城镇、关隘、港口、村落或野外地点；门派请在下方单独选择。';
   if (node.type === 'faction') return '法尸禁地是敌对污染区，不能作为出生点。';
   return '';
 }
