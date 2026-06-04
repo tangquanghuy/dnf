@@ -1552,7 +1552,7 @@ async function exploreNode(node) {
   if (!node || !currentMapData) return;
   const base = (currentMapData.title || '').trim();
   const placePath = base ? `${base}${NODE_SEP}${node.name}` : node.name;
-  const text = `探索${node.name}`;
+  const text = `尝试移动至${node.name}并探索`;
   try {
     const ok = await tavernSendMessage(text);
     if (!ok) throw new Error('写入失败');
