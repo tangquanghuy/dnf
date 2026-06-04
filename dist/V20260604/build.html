@@ -1,3 +1,4 @@
+```
 <!DOCTYPE html>
 <html lang="zh-CN">
 
@@ -761,6 +762,7 @@ if (typeof window !== 'undefined') {
             justify-content: center;
             padding: 10px;
             backdrop-filter: blur(5px);
+            overflow-x: hidden;
         }
 
         /* App Container */
@@ -7341,7 +7343,7 @@ if (typeof window !== 'undefined') {
                                         </div>
                                         <iframe ref="jiuzhouSpawnMapFrame" :src="jiuzhouMapFrameSrc" :srcdoc="jiuzhouMapEmbedSrcdoc || null" @load="handleJiuzhouSpawnMapFrameLoad"
                                             title="大明志异出生点地图"
-                                            style="display:block; width:100%; min-height:560px; border:none; background:#1a2535;"></iframe>
+                                            style="display:block; width:100%; min-height:560px; border:none; background:#1a2535; touch-action:none; overscroll-behavior:contain;"></iframe>
                                     </div>
 
                                     <div v-if="selectedJiuzhouSpawn"
@@ -9568,7 +9570,7 @@ if (typeof window !== 'undefined') {
                 const amberMapEmbedUrl = computed(() => buildAmberMapEmbedUrl(resolveAmberMapBaseUrl()));
                 const amberMapFrameSrc = computed(() => amberMapEmbedSrcdoc.value ? 'about:blank' : amberMapEmbedUrl.value);
 
-                function injectBaseHrefIntoHtml(html, pageUrl, bootstrapConfig = null, configVarName = '__AMBER_MAP_EMBED_CONFIG__') {
+                function injectBaseHrefIntoHtml(html, pageUrl, bootstrapConfig = null, configVarName = '__AMBER_MAP_EMBED_CONFIG__', extraHeadMarkup = '') {
                     const text = String(html || '');
                     if (!text.trim()) return '';
                     try {
@@ -9576,20 +9578,24 @@ if (typeof window !== 'undefined') {
                         const bootstrapMarkup = (bootstrapConfig && typeof bootstrapConfig === 'object')
                             ? `${'<scr' + 'ipt>'}window.${configVarName}=${JSON.stringify(bootstrapConfig).replace(/</g, '\\u003c')};${'</scr' + 'ipt>'}`
                             : '';
+                        const extraMarkup = String(extraHeadMarkup || '');
                         const injectParts = [`<base href="${baseHref}">`];
                         if (bootstrapConfig && typeof bootstrapConfig === 'object') {
                             injectParts.push(bootstrapMarkup);
                         }
+                        if (extraMarkup) {
+                            injectParts.push(extraMarkup);
+                        }
                         const injectMarkup = injectParts.join('');
                         if (/<base\b/i.test(text)) {
-                            if (!bootstrapMarkup) return text;
+                            if (!bootstrapMarkup && !extraMarkup) return text;
                             if (/<head[^>]*>/i.test(text)) {
-                                return text.replace(/<head([^>]*)>/i, `<head$1>${bootstrapMarkup}`);
+                                return text.replace(/<head([^>]*)>/i, `<head$1>${bootstrapMarkup}${extraMarkup}`);
                             }
                             if (/<!doctype[^>]*>/i.test(text)) {
-                                return text.replace(/<!doctype[^>]*>/i, match => `${match}\n<head>${bootstrapMarkup}</head>`);
+                                return text.replace(/<!doctype[^>]*>/i, match => `${match}\n<head>${bootstrapMarkup}${extraMarkup}</head>`);
                             }
-                            return `<head>${bootstrapMarkup}</head>${text}`;
+                            return `<head>${bootstrapMarkup}${extraMarkup}</head>${text}`;
                         }
                         if (/<head[^>]*>/i.test(text)) {
                             return text.replace(/<head([^>]*)>/i, `<head$1>${injectMarkup}`);
@@ -9602,6 +9608,123 @@ if (typeof window !== 'undefined') {
                         console.warn('[琥珀地图] 注入 base 失败:', error);
                         return text;
                     }
+                }
+
+                function getJiuzhouMapTouchPatchHeadMarkup() {
+                    const styleMarkup = '<style>html,body{overscroll-behavior:none;}#map-container{touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;}</style>';
+                    const scriptMarkup = [
+                        `${'<scr' + 'ipt>'}(function(){`,
+                        'const CLICK_SUPPRESS_MS = 260;',
+                        'const DRAG_THRESHOLD = 6;',
+                        'let installed = false;',
+                        'function install(){',
+                        'if (installed) return true;',
+                        'const container = document.getElementById("map-container");',
+                        'if (!container || typeof render !== "function") return false;',
+                        'installed = true;',
+                        'let touchSessionActive = false;',
+                        'let activePointerId = null;',
+                        'let activeTouchId = null;',
+                        'let dragMoved = false;',
+                        'let suppressClickUntil = 0;',
+                        'const now = () => (typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now());',
+                        'const beginDrag = (clientX, clientY) => {',
+                        'touchSessionActive = true;',
+                        'dragMoved = false;',
+                        'isDragging = true;',
+                        'dragStartX = clientX;',
+                        'dragStartY = clientY;',
+                        'dragViewX = viewX;',
+                        'dragViewY = viewY;',
+                        'container.classList.add("grabbing");',
+                        '};',
+                        'const moveDrag = (clientX, clientY) => {',
+                        'if (!touchSessionActive) return false;',
+                        'const dx = clientX - dragStartX;',
+                        'const dy = clientY - dragStartY;',
+                        'if (!dragMoved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return false;',
+                        'dragMoved = true;',
+                        'viewX = dragViewX + dx / scale;',
+                        'viewY = dragViewY + dy / scale;',
+                        'render();',
+                        'return true;',
+                        '};',
+                        'const endDrag = () => {',
+                        'if (!touchSessionActive) return;',
+                        'if (dragMoved) suppressClickUntil = now() + CLICK_SUPPRESS_MS;',
+                        'touchSessionActive = false;',
+                        'activePointerId = null;',
+                        'activeTouchId = null;',
+                        'dragMoved = false;',
+                        'isDragging = false;',
+                        'container.classList.remove("grabbing");',
+                        '};',
+                        'container.addEventListener("click", function(event){',
+                        'if (suppressClickUntil && now() < suppressClickUntil) {',
+                        'event.preventDefault();',
+                        'event.stopImmediatePropagation();',
+                        '}',
+                        '}, true);',
+                        'if (window.PointerEvent) {',
+                        'container.addEventListener("pointerdown", function(event){',
+                        'if (event.pointerType === "mouse" || touchSessionActive) return;',
+                        'activePointerId = event.pointerId;',
+                        'beginDrag(event.clientX, event.clientY);',
+                        'if (typeof container.setPointerCapture === "function") {',
+                        'try { container.setPointerCapture(event.pointerId); } catch (error) {}',
+                        '}',
+                        '}, { passive: true });',
+                        'container.addEventListener("pointermove", function(event){',
+                        'if (!touchSessionActive || activePointerId !== event.pointerId) return;',
+                        'if (moveDrag(event.clientX, event.clientY)) event.preventDefault();',
+                        '}, { passive: false });',
+                        'const finishPointerDrag = function(event){',
+                        'if (!touchSessionActive || (activePointerId !== null && event.pointerId !== activePointerId)) return;',
+                        'if (event.pointerId !== undefined && typeof container.releasePointerCapture === "function") {',
+                        'try { container.releasePointerCapture(event.pointerId); } catch (error) {}',
+                        '}',
+                        'endDrag();',
+                        '};',
+                        'container.addEventListener("pointerup", finishPointerDrag);',
+                        'container.addEventListener("pointercancel", finishPointerDrag);',
+                        'container.addEventListener("lostpointercapture", finishPointerDrag);',
+                        'return true;',
+                        '}',
+                        'const findTouch = function(touchList){',
+                        'for (let i = 0; i < touchList.length; i++) {',
+                        'if (touchList[i].identifier === activeTouchId) return touchList[i];',
+                        '}',
+                        'return null;',
+                        '};',
+                        'container.addEventListener("touchstart", function(event){',
+                        'if (touchSessionActive || !event.changedTouches.length) return;',
+                        'const touch = event.changedTouches[0];',
+                        'activeTouchId = touch.identifier;',
+                        'beginDrag(touch.clientX, touch.clientY);',
+                        '}, { passive: true });',
+                        'window.addEventListener("touchmove", function(event){',
+                        'if (!touchSessionActive) return;',
+                        'const touch = findTouch(event.changedTouches) || findTouch(event.touches);',
+                        'if (!touch) return;',
+                        'if (moveDrag(touch.clientX, touch.clientY)) event.preventDefault();',
+                        '}, { passive: false });',
+                        'const finishTouchDrag = function(event){',
+                        'if (!touchSessionActive) return;',
+                        'if (event.type !== "touchcancel" && !findTouch(event.changedTouches)) return;',
+                        'endDrag();',
+                        '};',
+                        'window.addEventListener("touchend", finishTouchDrag, { passive: true });',
+                        'window.addEventListener("touchcancel", finishTouchDrag, { passive: true });',
+                        'return true;',
+                        '}',
+                        'if (!install()) {',
+                        'window.addEventListener("DOMContentLoaded", install, { once: true });',
+                        'window.addEventListener("load", install, { once: true });',
+                        '}',
+                        '})();',
+                        `${'</scr' + 'ipt>'}`
+                    ].join('');
+                    return `${styleMarkup}${scriptMarkup}`;
                 }
 
                 async function hydrateAmberMapEmbed(url) {
@@ -9759,7 +9882,7 @@ if (typeof window !== 'undefined') {
                         jiuzhouMapEmbedSrcdoc.value = injectBaseHrefIntoHtml(textBody, targetUrl, {
                             mode: 'spawn-select',
                             embed: '1'
-                        }, '__JIUZHOU_MAP_EMBED_CONFIG__');
+                        }, '__JIUZHOU_MAP_EMBED_CONFIG__', getJiuzhouMapTouchPatchHeadMarkup());
                     } catch (error) {
                         console.warn('[大明志异地图] 预取嵌入页面失败，回退为直接加载（出生点选择可能不可用）:', error);
                     }
@@ -13334,7 +13457,10 @@ if (typeof window !== 'undefined') {
                 const levelBonus = computed(() => {
                     return 0; // 购点法不使用等级加成
                 });
-                const baseRP = computed(() => isAmberWorldview.value ? 50 : 100);
+                const baseRP = computed(() => {
+                    if (isAmberWorldview.value || isJiuzhouWorldview.value) return 50;
+                    return 100;
+                });
 
                 // 计算剩余RP
                 const remainingRP = computed(() => {
@@ -18100,3 +18226,4 @@ ${lockedSkillsJson}
 </body>
 
 </html>
+```
