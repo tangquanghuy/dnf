@@ -33,7 +33,10 @@ body::after {
   content:''; position:fixed; inset:0; z-index:1; pointer-events:none;
   background: radial-gradient(ellipse at center, transparent 50%, rgba(10, 15, 20, 0.5) 100%);
 }
-#map-container { position:relative; width:100%; height:100%; z-index:2; overflow:hidden; cursor:grab; }
+#map-container {
+  position:relative; width:100%; height:100%; z-index:2; overflow:hidden; cursor:grab;
+  touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+}
 #map-container.grabbing { cursor:grabbing; }
 #edge-canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
 #node-layer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
@@ -702,6 +705,7 @@ edges.forEach((e, i) => {
 const SPREAD = 2.9;
 let viewX = 0, viewY = 0, scale = 0.6;
 let isDragging = false, dragStartX = 0, dragStartY = 0, dragViewX = 0, dragViewY = 0;
+let activePointerId = null;
 let activeFilter = 'all';
 let hoverId = null;
 
@@ -1105,20 +1109,43 @@ detailClose.addEventListener('click', () => detailOverlay.classList.remove('acti
 detailOverlay.addEventListener('click', (ev) => { if (ev.target === detailOverlay) detailOverlay.classList.remove('active'); });
 
 // ============ PAN & ZOOM ============
-container.addEventListener('mousedown', (ev) => {
+function stopDragging() {
+  isDragging = false;
+  activePointerId = null;
+  container.classList.remove('grabbing');
+}
+
+container.addEventListener('pointerdown', (ev) => {
+  if (!ev.isPrimary) return;
   if (ev.target.closest('.node-wrapper')) return;
   isDragging = true;
-  dragStartX = ev.clientX; dragStartY = ev.clientY;
-  dragViewX = viewX; dragViewY = viewY;
+  activePointerId = ev.pointerId;
+  dragStartX = ev.clientX;
+  dragStartY = ev.clientY;
+  dragViewX = viewX;
+  dragViewY = viewY;
   container.classList.add('grabbing');
+  if (typeof container.setPointerCapture === 'function') {
+    try { container.setPointerCapture(ev.pointerId); } catch (e) {}
+  }
 });
-window.addEventListener('mousemove', (ev) => {
-  if (!isDragging) return;
+container.addEventListener('pointermove', (ev) => {
+  if (!isDragging || activePointerId !== ev.pointerId) return;
   viewX = dragViewX + (ev.clientX - dragStartX) / scale;
   viewY = dragViewY + (ev.clientY - dragStartY) / scale;
   render();
 });
-window.addEventListener('mouseup', () => { isDragging = false; container.classList.remove('grabbing'); });
+container.addEventListener('pointerup', (ev) => {
+  if (activePointerId !== ev.pointerId) return;
+  stopDragging();
+});
+container.addEventListener('pointercancel', (ev) => {
+  if (activePointerId !== ev.pointerId) return;
+  stopDragging();
+});
+container.addEventListener('lostpointercapture', () => {
+  stopDragging();
+});
 container.addEventListener('wheel', (ev) => {
   ev.preventDefault();
   const factor = ev.deltaY > 0 ? 0.9 : 1.1;
