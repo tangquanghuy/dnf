@@ -89,7 +89,10 @@ html, body { width:100%; height:100%; font-family:'Noto Serif SC',serif; backgro
 
 /* 右侧地图 */
 #map-area { flex:1; position:relative; overflow:hidden; }
-#map-container { position:relative; width:100%; height:100%; cursor:grab; }
+#map-container {
+  position:relative; width:100%; height:100%; cursor:grab;
+  touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+}
 #map-container.grabbing { cursor:grabbing; }
 #edge-canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
 #node-layer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
@@ -365,6 +368,7 @@ const FIELD_LABELS = {
 let currentMapData = null;
 let viewX = 0, viewY = 0, scale = 1.0;
 let isDragging = false, dragStartX = 0, dragStartY = 0, dragViewX = 0, dragViewY = 0;
+let activePointerId = null;
 let nodeElements = [];
 
 // 彩蛋：每次生成有一定概率掷中"隐藏节点"。命中与否由代码掷骰决定（不交给 AI），
@@ -1285,20 +1289,43 @@ $('detail-close').addEventListener('click', () => $('detail-overlay').classList.
 $('detail-overlay').addEventListener('click', e => { if (e.target.id === 'detail-overlay') $('detail-overlay').classList.remove('active'); });
 
 // ==================== 拖拽缩放 ====================
-container.addEventListener('mousedown', e => {
+function stopDragging() {
+  isDragging = false;
+  activePointerId = null;
+  container.classList.remove('grabbing');
+}
+
+container.addEventListener('pointerdown', e => {
+  if (!e.isPrimary) return;
   if (e.target.closest('.node-wrapper')) return;
   isDragging = true;
-  dragStartX = e.clientX; dragStartY = e.clientY;
-  dragViewX = viewX; dragViewY = viewY;
+  activePointerId = e.pointerId;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  dragViewX = viewX;
+  dragViewY = viewY;
   container.classList.add('grabbing');
+  if (typeof container.setPointerCapture === 'function') {
+    try { container.setPointerCapture(e.pointerId); } catch (err) {}
+  }
 });
-window.addEventListener('mousemove', e => {
-  if (!isDragging) return;
+container.addEventListener('pointermove', e => {
+  if (!isDragging || activePointerId !== e.pointerId) return;
   viewX = dragViewX + (e.clientX - dragStartX) / scale;
   viewY = dragViewY + (e.clientY - dragStartY) / scale;
   updatePositions(); renderEdges();
 });
-window.addEventListener('mouseup', () => { isDragging = false; container.classList.remove('grabbing'); });
+container.addEventListener('pointerup', e => {
+  if (activePointerId !== e.pointerId) return;
+  stopDragging();
+});
+container.addEventListener('pointercancel', e => {
+  if (activePointerId !== e.pointerId) return;
+  stopDragging();
+});
+container.addEventListener('lostpointercapture', () => {
+  stopDragging();
+});
 container.addEventListener('wheel', e => {
   e.preventDefault();
   scale = Math.max(0.3, Math.min(3, scale * (e.deltaY > 0 ? 0.9 : 1.1)));
