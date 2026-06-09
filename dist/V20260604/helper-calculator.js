@@ -3042,6 +3042,8 @@
             statData.末日时钟 = clock; // 脚本自建结构，不依赖初始化文件
         }
 
+        clock.功业次数 = safeParseInt(clock.功业次数, 0);
+
         // 起始年历缺失/不可解析时，以当前年历初始化
         const worldCalendar = statData?.世界信息?.年历;
         if (!clock.起始年历 || !parseCalendarDate(clock.起始年历)) {
@@ -3077,7 +3079,7 @@
         if (newCount < 0) newCount = 0;
         if (newCount > 5) newCount = 5; // 防一回合异常狂刷
         if (newCount > 0) {
-            clock.功业次数 = safeParseInt(clock.功业次数, 0) + newCount;
+            clock.功业次数 += newCount;
         }
         if (clock.已镇功业.length > DOOM_HISTORY_CAP) {
             clock.已镇功业 = clock.已镇功业.slice(clock.已镇功业.length - DOOM_HISTORY_CAP);
