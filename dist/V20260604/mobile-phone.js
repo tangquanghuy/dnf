@@ -267,7 +267,7 @@ body #mobile-trigger-btn.tablet-mode {
     flex-direction: column !important;
     position: relative !important;
     background: #fff5f7 !important;
-    background-image: url('https://gitgud.io/Rown/dnf/-/raw/master/%E5%B0%81%E9%9D%A2/%E6%B3%95%E9%9C%B2%E7%89%B9.webp') !important;
+    background-image: url('https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%B0%81%E9%9D%A2/%E6%B3%95%E9%9C%B2%E7%89%B9.webp') !important;
     background-size: cover !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
@@ -2121,26 +2121,26 @@ function getRelationshipKeys(collection) {
 
 // ==================== 角色头像配置 ====================
 const CHARACTER_AVATAR_CONFIG = {
-    '奈雅丽': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E5%A5%88%E9%9B%85%E4%B8%BD.webp',
-    '星极': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E6%98%9F%E6%9E%81.webp',
-    '法露特': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E6%B3%95%E9%9C%B2%E7%89%B9.webp',
-    '亚丝娜': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E4%BA%9A%E4%B8%9D%E5%A8%9C.webp',
-    '露露卡': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E9%9C%B2%E9%9C%B2%E5%8D%A1.webp',
-    '奥契丝': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E5%A5%A5%E5%A5%91%E4%B8%9D.webp',
-    '红莲': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E7%BA%A2%E8%8E%B2.webp',
-    '艾克莉西娅': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E8%89%BE%E5%85%8B%E8%8E%89%E8%A5%BF%E5%A8%85.webp',
-    '克拉米': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E5%85%8B%E6%8B%89%E7%B1%B3.webp',
-    '初濑伊纲': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E5%88%9D%E6%BF%91%E4%BC%8A%E7%BA%B2.webp',
-    '史蒂芬妮': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E5%8F%B2%E8%92%82%E8%8A%AC%E5%A6%AE.webp',
-    '吉普莉尔': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E5%90%89%E6%99%AE%E8%8E%89%E5%B0%94.webp',
-    '特图': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E7%89%B9%E5%9B%BE.webp',
-    '白': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E7%99%BD.webp',
-    '绯': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E7%BB%AF.webp',
-    '菲尔': 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E8%8F%B2%E5%B0%94.webp',
-    "卡提希娅": 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E5%8D%A1%E6%8F%90%E5%B8%8C%E5%A8%85.webp',
-    "爱弥斯": 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E7%88%B1%E5%BC%A5%E6%96%AF.webp',
-    "璐米欧儿": 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E7%92%90%E7%B1%B3%E6%AC%A7%E5%84%BF.webp',
-    "雅儿贞特": 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%A4%B4%E5%83%8F/%E9%9B%85%E5%84%BF%E8%B4%9E%E7%89%B9.webp'
+    '奈雅丽': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E5%A5%88%E9%9B%85%E4%B8%BD.webp',
+    '星极': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E6%98%9F%E6%9E%81.webp',
+    '法露特': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E6%B3%95%E9%9C%B2%E7%89%B9.webp',
+    '亚丝娜': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E4%BA%9A%E4%B8%9D%E5%A8%9C.webp',
+    '露露卡': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E9%9C%B2%E9%9C%B2%E5%8D%A1.webp',
+    '奥契丝': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E5%A5%A5%E5%A5%91%E4%B8%9D.webp',
+    '红莲': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E7%BA%A2%E8%8E%B2.webp',
+    '艾克莉西娅': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E8%89%BE%E5%85%8B%E8%8E%89%E8%A5%BF%E5%A8%85.webp',
+    '克拉米': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E5%85%8B%E6%8B%89%E7%B1%B3.webp',
+    '初濑伊纲': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E5%88%9D%E6%BF%91%E4%BC%8A%E7%BA%B2.webp',
+    '史蒂芬妮': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E5%8F%B2%E8%92%82%E8%8A%AC%E5%A6%AE.webp',
+    '吉普莉尔': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E5%90%89%E6%99%AE%E8%8E%89%E5%B0%94.webp',
+    '特图': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E7%89%B9%E5%9B%BE.webp',
+    '白': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E7%99%BD.webp',
+    '绯': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E7%BB%AF.webp',
+    '菲尔': 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E8%8F%B2%E5%B0%94.webp',
+    "卡提希娅": 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E5%8D%A1%E6%8F%90%E5%B8%8C%E5%A8%85.webp',
+    "爱弥斯": 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E7%88%B1%E5%BC%A5%E6%96%AF.webp',
+    "璐米欧儿": 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E7%92%90%E7%B1%B3%E6%AC%A7%E5%84%BF.webp',
+    "雅儿贞特": 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%A4%B4%E5%83%8F/%E9%9B%85%E5%84%BF%E8%B4%9E%E7%89%B9.webp'
 };
 
 /**
@@ -2237,7 +2237,7 @@ let phoneStartY = 0;
 let isPinned = false;
 
 // 壁纸数据
-const phoneWpBaseUrl = 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%B0%81%E9%9D%A2/';
+const phoneWpBaseUrl = 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%B0%81%E9%9D%A2/';
 const phoneWpData = {
     '卡提希娅': ['卡提希娅'],
     '奈雅丽': ['奈雅丽'],
@@ -6097,7 +6097,7 @@ function processMessageImages(content) {
     const imageRegex = /<pic>(.*?)<\/pic>/gi;
 
     const processedContent = content.replace(imageRegex, (match, imagePath) => {
-        const imageUrl = `https://gitgud.io/Rown/dnf/-/raw/master/${imagePath.trim()}.webp`;
+        const imageUrl = `https://r2-proxy.saugrodep.workers.dev/b/dnf/${imagePath.trim()}.webp`;
         // 使用data属性存储URL，通过事件委托处理点击
         return `<div class="message-image-container" style="margin: 8px 0;">
             <img src="${imageUrl}" 
@@ -6573,7 +6573,7 @@ const CG_LIST = {
 };
 
 // CG图片基础URL
-const CG_BASE_URL = "https://gitgud.io/Rown/dnf/-/raw/master/";
+const CG_BASE_URL = "https://r2-proxy.saugrodep.workers.dev/b/dnf/";
 
 /**
  * 获取已解锁的CG数据
@@ -9760,7 +9760,7 @@ function setWallpaper(imageUrl) {
 // 恢复壁纸
 function restoreWallpaper() {
     try {
-        const defaultWallpaper = 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%B0%81%E9%9D%A2/%E6%B3%95%E9%9C%B2%E7%89%B9.webp';
+        const defaultWallpaper = 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%B0%81%E9%9D%A2/%E6%B3%95%E9%9C%B2%E7%89%B9.webp';
         let savedWallpaper = localStorage.getItem('dnf-phone-wallpaper');
 
         // 验证保存的壁纸URL是否有效（不为空且包含http）
@@ -9852,7 +9852,7 @@ function uploadCustomWallpaper(file) {
 // 重置为默认壁纸
 function resetWallpaper() {
 
-    const defaultWallpaper = 'https://gitgud.io/Rown/dnf/-/raw/master/%E5%B0%81%E9%9D%A2/%E6%B3%95%E9%9C%B2%E7%89%B9.webp';
+    const defaultWallpaper = 'https://r2-proxy.saugrodep.workers.dev/b/dnf/%E5%B0%81%E9%9D%A2/%E6%B3%95%E9%9C%B2%E7%89%B9.webp';
 
     const $screen = $('#mobile-phone-overlay .mobile-phone-screen');
 
