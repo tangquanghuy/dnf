@@ -2926,16 +2926,64 @@
     const PROF_TIERS = ['学徒', '熟手', '专家', '大师', '传奇'];
     const PROF_THRESHOLDS = { '学徒': 25, '熟手': 50, '专家': 100, '大师': 200, '传奇': Infinity };
     const PROF_TIER_BONUS = { '学徒': 0, '熟手': 1, '专家': 2, '大师': 4, '传奇': 6 };
+    const PROF_TIER_START_TOTALS = PROF_TIERS.reduce((acc, tier, index) => {
+        if (index === 0) {
+            acc[tier] = 0;
+            return acc;
+        }
+        const prevTier = PROF_TIERS[index - 1];
+        const prevStart = acc[prevTier] || 0;
+        const prevThreshold = PROF_THRESHOLDS[prevTier];
+        acc[tier] = prevStart + (prevThreshold === Infinity ? 0 : safeParseInt(prevThreshold, 0));
+        return acc;
+    }, {});
 
     function getProfEffect(key, tier) {
         const bonus = PROF_TIER_BONUS[tier] ?? 0;
         return `${key}相关检定+${bonus}`;
     }
 
-    function getNextProfTier(current) {
-        const idx = PROF_TIERS.indexOf(current);
-        if (idx < 0 || idx >= PROF_TIERS.length - 1) return null;
-        return PROF_TIERS[idx + 1];
+    function getProfTierThreshold(tier) {
+        const threshold = PROF_THRESHOLDS[tier];
+        return threshold === Infinity ? 0 : safeParseInt(threshold, 0);
+    }
+
+    function getProfTierStartTotal(tier) {
+        return PROF_TIER_START_TOTALS[tier] || 0;
+    }
+
+    function getProfTotalProgress(entry) {
+        const tier = PROF_TIERS.includes(entry?.阶位) ? entry.阶位 : '学徒';
+        const progress = Math.max(0, safeParseInt(entry?.进度, 0));
+        return getProfTierStartTotal(tier) + progress;
+    }
+
+    function normalizeProfState(key, totalProgress) {
+        let remain = Math.max(0, safeParseInt(totalProgress, 0));
+
+        for (let i = 0; i < PROF_TIERS.length - 1; i++) {
+            const tier = PROF_TIERS[i];
+            const threshold = getProfTierThreshold(tier);
+            if (remain < threshold) {
+                return {
+                    tier,
+                    progress: remain,
+                    threshold,
+                    effect: getProfEffect(key, tier),
+                    totalProgress
+                };
+            }
+            remain -= threshold;
+        }
+
+        const finalTier = PROF_TIERS[PROF_TIERS.length - 1];
+        return {
+            tier: finalTier,
+            progress: 0,
+            threshold: 0,
+            effect: getProfEffect(key, finalTier),
+            totalProgress: getProfTierStartTotal(finalTier)
+        };
     }
 
     function processProficiencyBlock(block, blockBefore, label) {
@@ -2943,64 +2991,50 @@
         Object.entries(block).forEach(([key, entry]) => {
             if (!entry || typeof entry !== 'object') return;
             const oldEntry = blockBefore?.[key];
+            const oldState = oldEntry ? normalizeProfState(key, getProfTotalProgress(oldEntry)) : null;
+            const originalTier = entry.阶位 || '学徒';
+            const originalProgress = Math.max(0, safeParseInt(entry.进度, 0));
+            const originalThreshold = safeParseInt(entry.升阶阈值, 0);
+            const originalEffect = String(entry.效果 || '');
 
-            // 新注册的条目（之前不存在）：自动填写效果，强制校正升阶阈值
+            let resolvedTotal = getProfTotalProgress(entry);
+            if (oldState && resolvedTotal < oldState.totalProgress) {
+                console.warn(`[熟练度守卫] ⚠️ ${label}/${key} 总进度倒退 ${resolvedTotal}→${oldState.totalProgress}，已按旧进度修正`);
+                resolvedTotal = oldState.totalProgress;
+            }
+
+            const normalized = normalizeProfState(key, resolvedTotal);
+            const changes = [];
+
+            if (originalTier !== normalized.tier) {
+                changes.push(`阶位 ${originalTier}→${normalized.tier}`);
+            }
+            if (originalProgress !== normalized.progress) {
+                changes.push(`进度 ${originalProgress}→${normalized.progress}`);
+            }
+            if (originalThreshold !== normalized.threshold) {
+                changes.push(`升阶阈值 ${originalThreshold}→${normalized.threshold}`);
+            }
+            if (originalEffect !== normalized.effect) {
+                changes.push(`效果 "${originalEffect}"→"${normalized.effect}"`);
+            }
+
+            entry.阶位 = normalized.tier;
+            entry.进度 = normalized.progress;
+            entry.升阶阈值 = normalized.threshold;
+            entry.效果 = normalized.effect;
+
             if (!oldEntry) {
-                const tier = entry.阶位 || '学徒';
-                const correctThreshold = PROF_THRESHOLDS[tier] === Infinity ? 0 : (PROF_THRESHOLDS[tier] || 100);
-                if (safeParseInt(entry.升阶阈值, 0) !== correctThreshold) {
-                    console.warn(`[熟练度守卫] ⚠️ ${label}/${key} 注册时升阶阈值错误(${entry.升阶阈值})，已修正为${correctThreshold}`);
-                    entry.升阶阈值 = correctThreshold;
-                }
-                entry.效果 = getProfEffect(key, tier);
-                console.log(`[熟练度注册] ${label}/${key}: 阶位=${tier}, 阈值=${correctThreshold}, 效果="${entry.效果}"`);
-            }
-
-            // 回滚AI擅自修改阶位：只有脚本能改阶位
-            if (oldEntry && oldEntry.阶位 && entry.阶位 !== oldEntry.阶位) {
-                console.warn(`[熟练度守卫] ⚠️ ${label}/${key} 阶位被外部修改 ${oldEntry.阶位}→${entry.阶位}，已回滚`);
-                entry.阶位 = oldEntry.阶位;
-                entry.升阶阈值 = oldEntry.升阶阈值;
-                entry.效果 = oldEntry.效果 || getProfEffect(key, oldEntry.阶位);
-            }
-
-            // 回滚AI擅自修改效果：只有脚本能改效果
-            if (oldEntry && oldEntry.效果 && entry.效果 !== oldEntry.效果) {
-                console.warn(`[熟练度守卫] ⚠️ ${label}/${key} 效果被外部修改 "${oldEntry.效果}"→"${entry.效果}"，已回滚`);
-                entry.效果 = oldEntry.效果;
-            }
-
-            // 强制校正升阶阈值（防止AI篡改已有条目的阈值）
-            const tier = entry.阶位 || '学徒';
-            const correctThreshold = PROF_THRESHOLDS[tier] === Infinity ? 0 : (PROF_THRESHOLDS[tier] || 100);
-            if (safeParseInt(entry.升阶阈值, 0) !== correctThreshold) {
-                console.warn(`[熟练度守卫] ⚠️ ${label}/${key} 升阶阈值错误(${entry.升阶阈值})，已修正为${correctThreshold}`);
-                entry.升阶阈值 = correctThreshold;
-            }
-
-            const threshold = correctThreshold;
-            const progress = safeParseInt(entry.进度, 0);
-
-            if (tier === '传奇') {
-                // 满级锁死
-                if (progress !== 0) entry.进度 = 0;
+                console.log(`[熟练度注册] ${label}/${key}: 阶位=${normalized.tier}, 阈值=${normalized.threshold}, 进度=${normalized.progress}, 效果="${normalized.effect}"`);
                 return;
             }
 
-            if (progress >= threshold) {
-                const nextTier = getNextProfTier(tier);
-                if (nextTier) {
-                    entry.阶位 = nextTier;
-                    entry.进度 = progress - threshold;
-                    entry.升阶阈值 = PROF_THRESHOLDS[nextTier] === Infinity ? 0 : PROF_THRESHOLDS[nextTier];
-                    entry.效果 = getProfEffect(key, nextTier);
-                    console.log(`[熟练度进阶] ${label}/${key}: ${tier} → ${nextTier}, 溢出进度=${entry.进度}, 效果="${entry.效果}"`);
-                }
+            if (oldState && normalized.tier !== oldState.tier) {
+                console.log(`[熟练度进阶] ${label}/${key}: ${oldState.tier} → ${normalized.tier}, 当前进度=${normalized.progress}, 效果="${normalized.effect}"`);
             }
 
-            // 兜底：如果效果字段缺失，补上
-            if (!entry.效果) {
-                entry.效果 = getProfEffect(key, entry.阶位 || '学徒');
+            if (changes.length > 0) {
+                console.warn(`[熟练度守卫] ⚠️ ${label}/${key} 数据已校正：${changes.join('，')}`);
             }
         });
     }
