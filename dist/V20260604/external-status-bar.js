@@ -174,7 +174,7 @@
 
   // ==================== 职业背景图片映射 ====================
   // 根据职业显示不同的顶部壁纸背景
-  const CLASS_BACKGROUND_BASE_URL = 'https://gitgud.io/Rown/dnf/-/raw/master/background/';
+  const CLASS_BACKGROUND_BASE_URL = 'https://r2-proxy.saugrodep.workers.dev/b/dnf/background/';
   const CLASS_BACKGROUND_MAP = {
     // 基础职业映射
     '鬼剑士(男)': '鬼剑.webp',
@@ -2518,7 +2518,7 @@ ${lockedSkillsJson}
   };
 
   // 背景图片URL
-  const HEADER_BG_URL = 'https://gitgud.io/Rown/dnf/-/raw/master/background/rvassh.webp';
+  const HEADER_BG_URL = 'https://r2-proxy.saugrodep.workers.dev/b/dnf/background/rvassh.webp';
 
   // 检测并加载header背景图片
   const loadHeaderBackground = () => {
@@ -7700,7 +7700,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     z-index: 10;
     position: relative;
     overflow: hidden;
-    background: url('https://gitgud.io/Rown/dnf/-/raw/master/background/%E9%AC%BC%E5%89%91.webp') no-repeat center center;
+    background: url('https://r2-proxy.saugrodep.workers.dev/b/dnf/background/%E9%AC%BC%E5%89%91.webp') no-repeat center center;
     background-size: cover;
     padding: 20px 15px 10px; /* Reduced header padding */
 }
@@ -8763,7 +8763,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     aspect-ratio: 1 / 1;
     margin: 0 auto 15px;
     background-color: var(--bg-color);
-    background-image: url('https://gitgud.io/Rown/dnf/-/raw/master/background/29l6g5.webp');
+    background-image: url('https://r2-proxy.saugrodep.workers.dev/b/dnf/background/29l6g5.webp');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
