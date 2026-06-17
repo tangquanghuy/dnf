@@ -183,7 +183,7 @@
 
   // ==================== 顶部背景配置 ====================
   // 顶部壁纸的基址、默认图、兜底图统一从这里走，后面都只复用取图函数。
-  const STATUSBAR_BACKGROUND_BASE_URL = 'https://pub-bfc9a75eb580485d96dd23b7379d4ab6.r2.dev/background/';
+  const STATUSBAR_BACKGROUND_BASE_URL = 'https://rpg.bolt.qzz.io/background/';
   const STATUSBAR_DEFAULT_BACKGROUND_FILE = '守护者.webp';
 
   const getStatusBarBackgroundUrl = (fileName = STATUSBAR_DEFAULT_BACKGROUND_FILE) => {
@@ -8901,7 +8901,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     aspect-ratio: 1 / 1;
     margin: 0 auto 15px;
     background-color: var(--bg-color);
-    background-image: url('https://pub-bfc9a75eb580485d96dd23b7379d4ab6.r2.dev/background/29l6g5.webp');
+    background-image: url('https://rpg.bolt.qzz.io/background/29l6g5.webp');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
