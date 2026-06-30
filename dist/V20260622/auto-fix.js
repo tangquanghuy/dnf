@@ -4,12 +4,19 @@
     const SCRIPT_NAME = '楼层正文标签清理脚本';
     const LOADED_FLAG = '__楼层正文标签清理脚本_loaded__';
     const GLOBAL_API_NAME = '__fixMessageTagBlocks__';
+    const LIVE_REVIEW_SHELL_TAG = 'acu-review';
+    const LEGACY_LIVE_REVIEW_SHELL_TAG = 'acu-review-shell';
+    const LEGACY_LIVE_REVIEW_SLOT_TAG = 'acu-review-slot';
+    const LIVE_REVIEW_SHELL_RE = new RegExp(`\\n*<(?:${LIVE_REVIEW_SHELL_TAG}|${LEGACY_LIVE_REVIEW_SHELL_TAG})\\s+id="[^"]+"(?:\\s+mode="[^"]+")?\\s*>[\\s\\S]*?<\\/(?:${LIVE_REVIEW_SHELL_TAG}|${LEGACY_LIVE_REVIEW_SHELL_TAG})>\\s*`, 'gi');
+    const LEGACY_LIVE_REVIEW_SLOT_RE = new RegExp(`\\n*<${LEGACY_LIVE_REVIEW_SLOT_TAG}\\s+id="[^"]*"\\s*>\\s*<\\/${LEGACY_LIVE_REVIEW_SLOT_TAG}>\\s*`, 'gi');
 
     // 仅修改此处：兼容最新的 <think> 标签，确保能准确剥离思考域，定位到 <now_plot> 之前的部分
     const THINKING_CLOSE_RE = /<\/\s*(?:thinking|think)\s*>/i;
     
     const NOW_PLOT_TAG_RE = /<\s*\/?\s*now_plot\s*>/gi;
     const NOW_PLOT_TAG_TEST_RE = /<\s*\/?\s*now_plot\s*>/i;
+    const ACTION_BLOCK_RE = /<\s*action\s*>[\s\S]*?<\s*\/\s*action\s*>/gi;
+    const ACTION_BLOCK_TEST_RE = /<\s*action\s*>[\s\S]*?<\s*\/\s*action\s*>/i;
     const INTERLEAVING_TAG_RE = /<\s*\/?\s*Interleaving\s*>/gi;
     const INTERLEAVING_TAG_TEST_RE = /<\s*\/?\s*Interleaving\s*>/i;
     const INTERLEAVING_CLOSE_RE = /<\s*\/\s*Interleaving\s*>/gi;
@@ -128,6 +135,10 @@
         return String(text || '').replace(/(?:\n[ \t]*)+$/, '');
     }
 
+    function collapseBlankLines(text) {
+        return String(text || '').replace(/\n[ \t]*\n[ \t]*\n+/g, '\n\n');
+    }
+
     function normalizeNewlines(text) {
         return String(text || '').replace(/\r\n?/g, '\n');
     }
@@ -135,6 +146,23 @@
     function previewText(text, limit = 160) {
         const value = normalizeNewlines(text);
         return value.length > limit ? `${value.slice(0, limit)}...` : value;
+    }
+
+    function makeLiveReviewId(messageId) {
+        return `acu_live_review_${messageId}`;
+    }
+
+    function appendLiveReviewShell(message, messageId) {
+        const reviewId = makeLiveReviewId(messageId);
+        const base = trimTrailingBlankLines(
+            String(message || '')
+                .replace(LIVE_REVIEW_SHELL_RE, '')
+                .replace(LEGACY_LIVE_REVIEW_SLOT_RE, ''),
+        );
+        return {
+            reviewId,
+            message: `${base}\n\n<${LIVE_REVIEW_SHELL_TAG} id="${reviewId}" mode="live"></${LIVE_REVIEW_SHELL_TAG}>`,
+        };
     }
 
     function hasCompleteNowPlotPair(text) {
@@ -189,6 +217,18 @@
         return ranges.sort((left, right) => left.start - right.start || right.end - left.end);
     }
 
+    function tidyNowPlotInner(text) {
+        return String(text || '').replace(
+            /(<\s*now_plot\s*>)([\s\S]*?)(<\s*\/\s*now_plot\s*>)/gi,
+            (match, openTag, inner, closeTag) => {
+                const tidied = trimOuterWhitespace(collapseBlankLines(inner));
+                return tidied
+                    ? `${openTag}\n${tidied}\n${closeTag}`
+                    : `${openTag}\n${closeTag}`;
+            },
+        );
+    }
+
     function isRangeWrappedByNowPlot(targetRange, nowPlotRanges) {
         return nowPlotRanges.some(range => targetRange.start >= range.start && targetRange.end <= range.end);
     }
@@ -207,9 +247,26 @@
         return cardRanges.some(range => !isRangeWrappedByNowPlot(range, nowPlotRanges));
     }
 
+    function extractActionBlocks(text) {
+        const blocks = [];
+        const cleaned = String(text || '').replace(ACTION_BLOCK_RE, (block) => {
+            const trimmedBlock = trimOuterWhitespace(block);
+            if (trimmedBlock) {
+                blocks.push(trimmedBlock);
+            }
+            return '\n';
+        });
+
+        return {
+            text: cleaned,
+            blocks,
+        };
+    }
+
     function hasRelevantTag(text) {
         return THINKING_CLOSE_RE.test(text)
             || NOW_PLOT_TAG_TEST_RE.test(text)
+            || ACTION_BLOCK_TEST_RE.test(text)
             || INTERLEAVING_TAG_TEST_RE.test(text)
             || SUMMARY_OPEN_RE.test(text)
             || UPDATE_OPEN_RE.test(text);
@@ -249,17 +306,25 @@
         const suffixRaw = anchorIndex >= 0
             ? tailWithoutInterleaving.slice(anchorIndex)
             : '';
+        const middleActionExtract = extractActionBlocks(middleRaw);
+        const suffixActionExtract = extractActionBlocks(suffixRaw);
+        const middleWithoutAction = middleActionExtract.text;
+        const suffixWithoutAction = suffixActionExtract.text;
+        const actionBlocks = [
+            ...middleActionExtract.blocks,
+            ...suffixActionExtract.blocks,
+        ];
 
-        const hasNowPlotPair = hasCompleteNowPlotPair(middleRaw);
+        const hasNowPlotPair = hasCompleteNowPlotPair(middleWithoutAction);
         
         // 此处的逻辑完美保留：利用 hasBeautifyCardOutsideNowPlot 检测 <now_plot> 之前的卡片
-        const shouldRewrapNowPlot = hasNowPlotPair && hasBeautifyCardOutsideNowPlot(middleRaw);
+        const shouldRewrapNowPlot = hasNowPlotPair && hasBeautifyCardOutsideNowPlot(middleWithoutAction);
         
         // 核心保留：当检测到外部卡片时，剔除首尾旧标签，并在下面由 `normalized += <now_plot>` 和 `</now_plot>` 统一重新包裹
         const cleanedMiddle = hasNowPlotPair && !shouldRewrapNowPlot
-            ? trimOuterWhitespace(middleRaw)
-            : trimOuterWhitespace(middleRaw.replace(NOW_PLOT_TAG_RE, ''));
-        const cleanedSuffix = trimLeadingBlankLines(suffixRaw.replace(NOW_PLOT_TAG_RE, ''));
+            ? tidyNowPlotInner(trimOuterWhitespace(collapseBlankLines(middleWithoutAction)))
+            : trimOuterWhitespace(collapseBlankLines(middleWithoutAction.replace(NOW_PLOT_TAG_RE, '')));
+        const cleanedSuffix = trimLeadingBlankLines(collapseBlankLines(suffixWithoutAction.replace(NOW_PLOT_TAG_RE, '')));
 
         let normalized = `${prefix}\n\n`;
         if (hasNowPlotPair && !shouldRewrapNowPlot) {
@@ -271,6 +336,10 @@
             }
             // 绝不动尾部标签处理，原汁原味！
             normalized += `</now_plot>`;
+        }
+
+        if (actionBlocks.length > 0) {
+            normalized += `\n${actionBlocks.join('\n')}`;
         }
 
         if (keepInterleaving) {
@@ -333,7 +402,12 @@
     }
 
     async function rewriteMessage(messageId, chatMessage, normalizedMessage, options = {}) {
-        const { notify = false } = options;
+        const {
+            notify = false,
+            persist = true,
+            reload = true,
+            logWrite = true,
+        } = options;
         const wrapperRecord = chatMessage ?? getMessageRecord(messageId);
         const target = resolveContextChatTarget(messageId, wrapperRecord);
         const targetMessage = target.record;
@@ -348,7 +422,7 @@
             ? topWindow.saveChat.bind(topWindow)
             : (typeof target.context?.saveChat === 'function' ? target.context.saveChat.bind(target.context) : null);
 
-        if (typeof saveChat === 'function') {
+        if (persist && typeof saveChat === 'function') {
             try {
                 await saveChat();
             } catch (error) {
@@ -361,7 +435,7 @@
             }
         }
 
-        if (typeof topWindow?.reloadCurrentChat === 'function') {
+        if (reload && typeof topWindow?.reloadCurrentChat === 'function') {
             try {
                 await topWindow.reloadCurrentChat();
             } catch (error) {
@@ -374,9 +448,11 @@
             }
         }
 
-        const logMessage = `[${SCRIPT_NAME}] 已回写并刷新第 ${messageId} 楼`;
-        console.log(logMessage);
-        if (notify) {
+        const logMessage = `[${SCRIPT_NAME}] 已回写第 ${messageId} 楼`;
+        if (logWrite) {
+            console.log(logMessage);
+        }
+        if (notify && typeof toastr !== 'undefined') {
             toastr.success(logMessage);
         }
     }
@@ -418,7 +494,11 @@
 
             const originalMessage = getMessageText(chatMessage);
             const normalized = normalizeTagBlocks(originalMessage);
-            const shouldWrite = force ? normalized.message !== normalizeNewlines(originalMessage) : normalized.changed;
+            const withReviewSlot = appendLiveReviewShell(normalized.message, messageId);
+            const normalizedWithSlot = withReviewSlot.message;
+            const shouldWrite = force
+                ? normalizedWithSlot !== normalizeNewlines(originalMessage)
+                : (normalized.changed || normalizedWithSlot !== normalizeNewlines(originalMessage));
 
             if (!shouldWrite) {
                 if (notify) {
@@ -433,9 +513,10 @@
                 };
             }
 
-            await rewriteMessage(messageId, chatMessage, normalized.message, { notify });
+            await rewriteMessage(messageId, chatMessage, normalizedWithSlot, { notify });
             return {
                 ...normalized,
+                review_id: withReviewSlot.reviewId,
                 message_id: messageId,
             };
         } catch (error) {
