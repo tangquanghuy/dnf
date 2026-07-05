@@ -4,11 +4,8 @@
     const SCRIPT_NAME = '楼层正文标签清理脚本';
     const LOADED_FLAG = '__楼层正文标签清理脚本_loaded__';
     const GLOBAL_API_NAME = '__fixMessageTagBlocks__';
-    const LIVE_REVIEW_SHELL_TAG = 'acu-review';
-    const LEGACY_LIVE_REVIEW_SHELL_TAG = 'acu-review-shell';
-    const LEGACY_LIVE_REVIEW_SLOT_TAG = 'acu-review-slot';
-    const LIVE_REVIEW_SHELL_RE = new RegExp(`\\n*<(?:${LIVE_REVIEW_SHELL_TAG}|${LEGACY_LIVE_REVIEW_SHELL_TAG})\\s+id="[^"]+"(?:\\s+mode="[^"]+")?\\s*>[\\s\\S]*?<\\/(?:${LIVE_REVIEW_SHELL_TAG}|${LEGACY_LIVE_REVIEW_SHELL_TAG})>\\s*`, 'gi');
-    const LEGACY_LIVE_REVIEW_SLOT_RE = new RegExp(`\\n*<${LEGACY_LIVE_REVIEW_SLOT_TAG}\\s+id="[^"]*"\\s*>\\s*<\\/${LEGACY_LIVE_REVIEW_SLOT_TAG}>\\s*`, 'gi');
+    const LIVE_REVIEW_TAG_BLOCK_RE = /\n*<\s*(?:acu-review|acu-review-shell)\b[^>]*>[\s\S]*?<\s*\/\s*(?:acu-review|acu-review-shell)\s*>\s*/gi;
+    const LIVE_REVIEW_SLOT_RE = /\n*<\s*acu-review-slot\b[^>]*>\s*<\s*\/\s*acu-review-slot\s*>\s*/gi;
 
     // 仅修改此处：兼容最新的 <think> 标签，确保能准确剥离思考域，定位到 <now_plot> 之前的部分
     const THINKING_CLOSE_RE = /<\/\s*(?:thinking|think)\s*>/i;
@@ -148,21 +145,12 @@
         return value.length > limit ? `${value.slice(0, limit)}...` : value;
     }
 
-    function makeLiveReviewId(messageId) {
-        return `acu_live_review_${messageId}`;
-    }
-
-    function appendLiveReviewShell(message, messageId) {
-        const reviewId = makeLiveReviewId(messageId);
-        const base = trimTrailingBlankLines(
-            String(message || '')
-                .replace(LIVE_REVIEW_SHELL_RE, '')
-                .replace(LEGACY_LIVE_REVIEW_SLOT_RE, ''),
-        );
-        return {
-            reviewId,
-            message: `${base}\n\n<${LIVE_REVIEW_SHELL_TAG} id="${reviewId}" mode="live"></${LIVE_REVIEW_SHELL_TAG}>`,
-        };
+    function removeLiveReviewTags(message) {
+        const source = String(message || '');
+        const cleaned = source
+            .replace(LIVE_REVIEW_TAG_BLOCK_RE, '')
+            .replace(LIVE_REVIEW_SLOT_RE, '');
+        return cleaned === source ? source : trimTrailingBlankLines(cleaned);
     }
 
     function hasCompleteNowPlotPair(text) {
@@ -494,29 +482,36 @@
 
             const originalMessage = getMessageText(chatMessage);
             const normalized = normalizeTagBlocks(originalMessage);
-            const withReviewSlot = appendLiveReviewShell(normalized.message, messageId);
-            const normalizedWithSlot = withReviewSlot.message;
+            const normalizedMessage = removeLiveReviewTags(normalized.message);
+            const removedLiveReviewTags = normalizedMessage !== normalized.message;
+            const normalizedResult = {
+                ...normalized,
+                changed: normalized.changed || removedLiveReviewTags,
+                reason: removedLiveReviewTags && normalized.changed
+                    ? `${normalized.reason}_without_live_review_tags`
+                    : (removedLiveReviewTags ? 'removed_live_review_tags' : normalized.reason),
+                message: normalizedMessage,
+            };
             const shouldWrite = force
-                ? normalizedWithSlot !== normalizeNewlines(originalMessage)
-                : (normalized.changed || normalizedWithSlot !== normalizeNewlines(originalMessage));
+                ? normalizedMessage !== normalizeNewlines(originalMessage)
+                : normalizedResult.changed;
 
             if (!shouldWrite) {
                 if (notify) {
-                    const tip = normalized.skipped
-                        ? `[${SCRIPT_NAME}] 第 ${messageId} 楼未处理: ${normalized.reason}`
+                    const tip = normalizedResult.skipped
+                        ? `[${SCRIPT_NAME}] 第 ${messageId} 楼未处理: ${normalizedResult.reason}`
                         : `[${SCRIPT_NAME}] 第 ${messageId} 楼无需修正`;
                     toastr.info(tip);
                 }
                 return {
-                    ...normalized,
+                    ...normalizedResult,
                     message_id: messageId,
                 };
             }
 
-            await rewriteMessage(messageId, chatMessage, normalizedWithSlot, { notify });
+            await rewriteMessage(messageId, chatMessage, normalizedMessage, { notify });
             return {
-                ...normalized,
-                review_id: withReviewSlot.reviewId,
+                ...normalizedResult,
                 message_id: messageId,
             };
         } catch (error) {
