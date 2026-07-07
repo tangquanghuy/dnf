@@ -4,9 +4,6 @@
     const SCRIPT_NAME = '楼层正文标签清理脚本';
     const LOADED_FLAG = '__楼层正文标签清理脚本_loaded__';
     const GLOBAL_API_NAME = '__fixMessageTagBlocks__';
-    const LIVE_REVIEW_TAG_BLOCK_RE = /\n*<\s*(?:acu-review|acu-review-shell)\b[^>]*>[\s\S]*?<\s*\/\s*(?:acu-review|acu-review-shell)\s*>\s*/gi;
-    const LIVE_REVIEW_SLOT_RE = /\n*<\s*acu-review-slot\b[^>]*>\s*<\s*\/\s*acu-review-slot\s*>\s*/gi;
-
     // 仅修改此处：兼容最新的 <think> 标签，确保能准确剥离思考域，定位到 <now_plot> 之前的部分
     const THINKING_CLOSE_RE = /<\/\s*(?:thinking|think)\s*>/i;
     
@@ -145,14 +142,6 @@
         return value.length > limit ? `${value.slice(0, limit)}...` : value;
     }
 
-    function removeLiveReviewTags(message) {
-        const source = String(message || '');
-        const cleaned = source
-            .replace(LIVE_REVIEW_TAG_BLOCK_RE, '')
-            .replace(LIVE_REVIEW_SLOT_RE, '');
-        return cleaned === source ? source : trimTrailingBlankLines(cleaned);
-    }
-
     function hasCompleteNowPlotPair(text) {
         return /<\s*now_plot\s*>[\s\S]*<\s*\/\s*now_plot\s*>/i.test(String(text || ''));
     }
@@ -272,7 +261,8 @@
         }
 
         const thinkingMatch = findFirstMatch(original, new RegExp(THINKING_CLOSE_RE.source, THINKING_CLOSE_RE.flags));
-        if (!thinkingMatch) {
+        const startsWithNowPlot = /^\s*<\s*now_plot\s*>/i.test(original);
+        if (!thinkingMatch && !startsWithNowPlot) {
             return {
                 changed: false,
                 skipped: true,
@@ -281,9 +271,11 @@
             };
         }
 
-        const thinkingEnd = thinkingMatch.index + thinkingMatch.value.length;
-        const prefix = trimTrailingBlankLines(original.slice(0, thinkingEnd));
-        const tail = original.slice(thinkingEnd);
+        const thinkingEnd = thinkingMatch ? (thinkingMatch.index + thinkingMatch.value.length) : 0;
+        const prefix = thinkingMatch
+            ? trimTrailingBlankLines(original.slice(0, thinkingEnd))
+            : '';
+        const tail = thinkingMatch ? original.slice(thinkingEnd) : original;
         const keepInterleaving = INTERLEAVING_CLOSE_TEST_RE.test(tail);
         const tailWithoutInterleaving = tail.replace(INTERLEAVING_TAG_RE, '');
         const anchorIndex = findEarliestAnchorIndex(tailWithoutInterleaving);
@@ -314,7 +306,7 @@
             : trimOuterWhitespace(collapseBlankLines(middleWithoutAction.replace(NOW_PLOT_TAG_RE, '')));
         const cleanedSuffix = trimLeadingBlankLines(collapseBlankLines(suffixWithoutAction.replace(NOW_PLOT_TAG_RE, '')));
 
-        let normalized = `${prefix}\n\n`;
+        let normalized = prefix ? `${prefix}\n\n` : '';
         if (hasNowPlotPair && !shouldRewrapNowPlot) {
             normalized += cleanedMiddle;
         } else {
@@ -482,16 +474,8 @@
 
             const originalMessage = getMessageText(chatMessage);
             const normalized = normalizeTagBlocks(originalMessage);
-            const normalizedMessage = removeLiveReviewTags(normalized.message);
-            const removedLiveReviewTags = normalizedMessage !== normalized.message;
-            const normalizedResult = {
-                ...normalized,
-                changed: normalized.changed || removedLiveReviewTags,
-                reason: removedLiveReviewTags && normalized.changed
-                    ? `${normalized.reason}_without_live_review_tags`
-                    : (removedLiveReviewTags ? 'removed_live_review_tags' : normalized.reason),
-                message: normalizedMessage,
-            };
+            const normalizedMessage = normalized.message;
+            const normalizedResult = normalized;
             const shouldWrite = force
                 ? normalizedMessage !== normalizeNewlines(originalMessage)
                 : normalizedResult.changed;
