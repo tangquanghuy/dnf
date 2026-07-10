@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>龙族跑团 · 世界地图</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="./dragon_mapdata.js?v=airp202607132"></script>
+  <script src="./dragon_mapdata.js?v=airp20260711_2"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@400;600;700&display=swap"
     rel="stylesheet">
@@ -119,6 +119,7 @@
     /* ============ FLAT ICON DISCS (light-modern) ============ */
     .node-icon {
       position: relative;
+      z-index: 2;
       display: grid;
       place-items: center;
       border-radius: 50%;
@@ -168,6 +169,8 @@
     }
 
     .node-label {
+      position: relative;
+      z-index: 3;
       margin-top: 6px;
       white-space: nowrap;
       text-align: center;
@@ -787,16 +790,16 @@
     }
 
     /* ============ RECOMMENDED SPAWN MARKER ============ */
-    .special-marker-recommended { position:absolute; pointer-events:none; z-index:-1; }
+    .special-marker-recommended { position:absolute; pointer-events:none; z-index:0; }
     .special-marker-recommended::before {
-      content:''; position:absolute; top:50%; left:50%; width:86px; height:86px;
+      content:''; position:absolute; top:50%; left:50%; width:92px; height:92px;
       transform:translate(-50%,-50%); border-radius:50%;
-      background:radial-gradient(circle,rgba(134,239,172,.46) 0%,rgba(187,247,208,.2) 48%,transparent 72%);
+      background:radial-gradient(circle,rgba(134,239,172,.52) 0%,rgba(187,247,208,.24) 48%,transparent 74%);
       animation:pulse-recommended 2.4s ease-in-out infinite;
     }
     .special-marker-recommended::after {
-      content:''; position:absolute; top:50%; left:50%; width:104px; height:104px;
-      transform:translate(-50%,-50%); border-radius:50%; border:2px solid rgba(74,222,128,.42);
+      content:''; position:absolute; top:50%; left:50%; width:114px; height:114px;
+      transform:translate(-50%,-50%); border-radius:50%; border:2px solid rgba(34,197,94,.54);
       animation:ring-recommended 2.4s ease-in-out infinite;
     }
     @keyframes pulse-recommended {
@@ -808,10 +811,11 @@
       50% { opacity:.72; transform:translate(-50%,-50%) scale(1.08); }
     }
     .special-badge-recommended {
-      position:absolute; top:50%; left:calc(100% + 8px); transform:translateY(-50%);
-      white-space:nowrap; font-size:10px; font-weight:700; color:#278553;
-      background:rgba(240,253,244,.96); padding:3px 9px; border-radius:999px;
-      border:1px solid rgba(74,222,128,.5); letter-spacing:1px; pointer-events:none;
+      position:absolute; top:-24px; left:50%; transform:translateX(-50%);
+      z-index:8; white-space:nowrap; font-size:11px; font-weight:800; color:#167a43;
+      background:rgba(240,253,244,.98); padding:4px 10px; border-radius:999px;
+      border:1px solid rgba(34,197,94,.62); letter-spacing:.5px; pointer-events:none;
+      box-shadow:0 6px 16px -6px rgba(22,122,67,.46);
       animation:badge-glow-recommended 2.4s ease-in-out infinite;
     }
     @keyframes badge-glow-recommended {
