@@ -3948,72 +3948,16 @@ var MAP_JSON_DATA = {
         "tier": "里侧型 / 血统的共享阁楼",
         "dangerLevel": "★★★★☆",
         "bloodIndex": "A",
-        "brief": "梦境回廊是城北睡眠中心、机场酒店、高校宿舍和地铁换乘通道中反复出现的梦域污染节点。表世界里，它依附失眠治疗、夜班住宿、考试周焦虑与通勤疲劳。里侧核心是脑电同步、门牌污染和梦中护士站。",
-        "newLandscape": "睡眠中心外墙贴着蓝白色导诊牌，候诊区摆满一次性拖鞋、饮水机和睡眠科宣传册。机场酒店的走廊铺厚地毯，门牌整齐，制冰机和自动售货机在尽头亮着。高校宿舍连廊挂满晾衣杆，地铁换乘通道凌晨由保洁车、广告灯箱和关闭的卷帘门占据。",
-        "peopleDaily": "患者、陪护家属、夜审员、保洁班、宿管阿姨、考试周学生和睡眠科医生构成表层人群。患者在社交平台记录睡眠质量、噩梦频率和用药体验；酒店前台处理补卡、延住和遗失充电器；宿舍楼每晚查寝，保洁班按排班表清理电梯口与走廊垃圾。",
-        "shadowPattern": "学院心理组把梦境回廊列为可传播精神污染，执行部负责隔离患者，诺玛负责抓取医院HIS、酒店门卡机和校园门禁日志。黑市入梦药供应商把污染门牌号做成药效证明，死侍教团收集患者梦话里的龙文片段。地方医院与高校维持表层秩序，病例封存需要学院心理组担保。",
-        "dragonTrace": "同批患者脑电在凌晨三点十二分出现同步尖峰，眼底短时呈现金色环纹。梦话录音里夹杂命令式古音节，普通声纹软件会把它标成机械噪声。纸质排班表、门卡打印纸和病房呼叫铃标签会自行生成同一组龙文编号，墨迹含青铜粉。",
-        "resourcesAccess": "正规入口是睡眠中心病历、酒店门卡日志、宿舍查寝表、地铁保洁排班和脑电原片。里侧入口包括312病房、酒店九层封存房、宿舍旧档案室、梦中护士站排班夹和黑市入梦药供货单。可调用资源有脑电监控、现实同伴声音、患者真实住址环境声、HIS修改日志、门卡机缓存和退学档案。",
-        "threats": "第一类是值班表替名，梦中护士站会把访客姓名写进排班，后果是现实身份记录被梦域覆盖；现实同伴用脑电尖峰确认同步时刻，梦内执行者从护士站排班夹抽出写名纸烧毁，现实端同步删除HIS异常排班。第二类是门牌吞人，门后复制受害者童年卧室，引导其留在梦里；同伴用心率骤降和眼动停止判断，处理方式是播放其真实住址附近的环境声。第三类是龙文失语，患者醒后能理解命令式龙文并丧失母语表达；用朗读测试和眼底环纹确认，交由学院心理组做记忆封存。",
-        "legends": "城北睡眠中心312病房连续三名患者画出同一张酒店走廊，画纸角落都有“909”；追查酒店门卡发现909房在火灾后封存，床垫下压着一张青铜房卡。地铁保洁班凌晨在换乘通道发现一排未安装的病房呼叫铃，铃号对应城北睡眠中心病床；调取保洁排班可找到携带污染门牌号的临时工。机场酒店夜审员报称凌晨三点总有客人要求补办门卡，监控里前台在对空气说话；门卡机日志打印出龙文编号，可追到黑市入梦药供货人。",
-        "scenes": "睡眠中心312病房：脑电取证、病历封存与入梦准备。酒店九层走廊：门卡追踪、镜面污染和逃亡。地铁换乘通道：呼叫铃调查、保洁排班和污染门牌截获。梦中护士站：替名对抗、记忆谈判和回程锚点。",
+        "brief": "梦境回廊是依附睡眠医学、旅馆夜宿、列车昏睡、麻醉苏醒和高压精神创伤出现的梦域中继层。它能把人的意识送入本人记忆、他人残留梦、历史灾难回声、尼伯龙根边界和其他维度异世界，以梦的形式回溯过往或抵达现实无法进入的空间。它不是某个固定事件的入口，而是一套可被锚物、脑电、姓名、旧照片和创伤记忆定位的精神域交通系统。",
+        "newLandscape": "表层锚点分散在睡眠中心、机场酒店、长途列车卧铺、医院麻醉复苏室、心理咨询室和高校宿舍。睡眠中心外墙贴着蓝白导诊牌，候诊区摆满一次性拖鞋、饮水机和睡眠科宣传册；机场酒店走廊铺厚地毯，制冰机和自动售货机在尽头亮着；列车卧铺车厢有阅读灯、窗帘、保温杯和夜间巡检脚步。普通人看到的是失眠、噩梦、倒时差、麻醉后幻觉和考试周焦虑。",
+        "peopleDaily": "患者、陪护家属、夜审员、列车乘务员、麻醉医生、心理咨询师、宿管阿姨、保洁班和考试周学生构成表层人群。患者在社交平台记录睡眠质量、噩梦频率和用药体验；酒店前台处理补卡、延住和遗失充电器；医院复苏室按麻醉批次叫醒病人；宿舍楼每晚查寝，保洁班按排班表清理电梯口与走廊垃圾。",
+        "shadowPattern": "学院心理组把梦境回廊列为精神域交通节点，执行部负责护送入梦者、封存梦醒后记忆污染，诺玛负责比对脑电原片、梦话声纹、旧案档案和历史坐标。它由多种梦门组成：记忆门通向个人过去，残梦门通向死者或幸存者留下的事件回声，档案门通向被照片、病历和录音固定的旧现场，边界门通向尼伯龙根外壳，异次元门通向其他维度异世界。黑市入梦药供应商贩卖低劣梦门坐标，死侍教团收集梦中龙文片段和历史灾难中的血样位置。",
+        "dragonTrace": "同批入梦者脑电在凌晨三点十二分出现同步尖峰，眼底短时呈现金色环纹；梦话录音里夹杂命令式古音节，普通声纹软件会把它标成机械噪声。进入历史回声时，现实端会出现时间偏差、体温下降和旧伤疼痛复现；携带从目标年代取得的锚物醒来后，锚物会退化为盐霜、青铜粉、烧焦纸屑、旧胶片斑点或一段可核验的坐标。高危梦门需要三类锚定同时成立：物证、姓名和现实端守夜人声音。",
+        "resourcesAccess": "正规入口是睡眠中心病历、脑电原片、麻醉记录、酒店门卡日志、列车卧铺票、宿舍查寝表和心理咨询录音。里侧入口包括312病房、酒店九层封存房、麻醉复苏室、列车夜间卧铺、梦中候车厅、历史档案门和黑市入梦药供货单。可调用资源有脑电监控、现实同伴声音、患者真实住址环境声、旧案照片、目标年代锚物、HIS修改日志、门卡机缓存、退学档案和诺玛梦境沙盘。",
+        "threats": "第一类是身份替名，梦门会把访客姓名写进目标年代的名单、病历或乘客表，后果是现实身份记录被梦域覆盖；处理需由现实同伴用脑电尖峰确认同步时刻，梦内执行者烧毁或改回写名纸，现实端同步删除异常排班。第二类是历史卷入，入梦者在旧案现场、灾难残梦或异世界中停留过久，会被分配成实验体、护士、士兵、乘务员、死者亲属或当地居民，醒后携带对方创伤和敌对关系；处理方式是持续播放真实住址环境声，并用锚物把意识拉回当前时间。第三类是门后串线，梦境回廊会把医院走廊、列车车厢、旧案现场和尼伯龙根剧院接成同一条路；处理需关闭错误门牌、断开黑市药物来源，并在现实端锁定唯一回程锚。",
+        "legends": "城北睡眠中心312病房连续三名患者画出同一座陌生港口、同一条旧学校走廊和同一间烧毁礼堂，画纸角落都有不同年代的编号；追查病历可找到三份互不相干的旧案复印件。机场酒店夜审员报称凌晨三点总有客人要求补办门卡，门卡机打印出的房号分别对应废弃医院、沉船舱室和异国剧院座位；查门卡缓存、梦话录音和入住登记，可确认三扇梦门被同一批药物污染。地铁保洁班凌晨在换乘通道发现一排未安装的病房呼叫铃，铃号对应不同年代的事故现场；调取保洁排班可找到携带污染门牌号的临时工和黑市入梦药供货人。",
+        "scenes": "睡眠中心312病房：脑电取证、锚物校验、病历封存与入梦准备。酒店九层走廊：门卡追踪、镜面污染、梦门分流和逃亡。列车夜间卧铺：长距离昏睡、历史坐标载入和同伴守夜。梦中候车厅：选择记忆门、残梦门、档案门、边界门和异次元门的中继空间。历史档案门：通往被照片、录音、病历或新闻剪报固定的过去现场，适合回溯旧案与灾难回声。异次元门：通往其他维度异世界，入梦者会获得临时身份、当地语言和回程锚限制。回程锚点室：现实同伴声音、脑电尖峰、锚物燃尽和人员清点集中。",
         "independent": true
-      },
-      {
-        "id": "otherspace_dreamcorridor_scene_1",
-        "name": "睡眠中心312病房",
-        "fullName": "梦境回廊 · 睡眠中心312病房",
-        "displayName": "睡眠中心312病房",
-        "type": "scene",
-        "x": 369,
-        "y": -282,
-        "region": "异空间",
-        "parentId": "otherspace_dreamcorridor",
-        "parentName": "梦境回廊",
-        "tier": "子场景",
-        "brief": "脑电取证、病历封存与入梦准备"
-      },
-      {
-        "id": "otherspace_dreamcorridor_scene_2",
-        "name": "酒店九层走廊",
-        "fullName": "梦境回廊 · 酒店九层走廊",
-        "displayName": "酒店九层走廊",
-        "type": "scene",
-        "x": 423,
-        "y": -278,
-        "region": "异空间",
-        "parentId": "otherspace_dreamcorridor",
-        "parentName": "梦境回廊",
-        "tier": "子场景",
-        "brief": "门卡追踪、镜面污染和逃亡"
-      },
-      {
-        "id": "otherspace_dreamcorridor_scene_3",
-        "name": "地铁换乘通道",
-        "fullName": "梦境回廊 · 地铁换乘通道",
-        "displayName": "地铁换乘通道",
-        "type": "scene",
-        "x": 365,
-        "y": -238,
-        "region": "异空间",
-        "parentId": "otherspace_dreamcorridor",
-        "parentName": "梦境回廊",
-        "tier": "子场景",
-        "brief": "呼叫铃调查、保洁排班和污染门牌截获"
-      },
-      {
-        "id": "otherspace_dreamcorridor_scene_4",
-        "name": "梦中护士站",
-        "fullName": "梦境回廊 · 梦中护士站",
-        "displayName": "梦中护士站",
-        "type": "scene",
-        "x": 425,
-        "y": -236,
-        "region": "异空间",
-        "parentId": "otherspace_dreamcorridor",
-        "parentName": "梦境回廊",
-        "tier": "子场景",
-        "brief": "替名对抗、记忆谈判和回程锚点"
       },
       {
         "id": "otherspace_nibelungen",
@@ -4228,6 +4172,104 @@ var MAP_JSON_DATA = {
         "parentName": "惊悚乐园",
         "tier": "子场景",
         "brief": "队伍经营、训练、复盘、战术分配和现实身份互动的安全区"
+      },
+      {
+        "id": "otherspace_dreamcorridor_scene_1",
+        "name": "睡眠中心312病房",
+        "fullName": "梦境回廊 · 睡眠中心312病房",
+        "displayName": "睡眠中心312病房",
+        "type": "scene",
+        "x": 369,
+        "y": -282,
+        "region": "异空间",
+        "parentId": "otherspace_dreamcorridor",
+        "parentName": "梦境回廊",
+        "tier": "子场景",
+        "brief": "脑电取证、锚物校验、病历封存与入梦准备"
+      },
+      {
+        "id": "otherspace_dreamcorridor_scene_2",
+        "name": "酒店九层走廊",
+        "fullName": "梦境回廊 · 酒店九层走廊",
+        "displayName": "酒店九层走廊",
+        "type": "scene",
+        "x": 423,
+        "y": -278,
+        "region": "异空间",
+        "parentId": "otherspace_dreamcorridor",
+        "parentName": "梦境回廊",
+        "tier": "子场景",
+        "brief": "门卡追踪、镜面污染、梦门分流和逃亡"
+      },
+      {
+        "id": "otherspace_dreamcorridor_scene_3",
+        "name": "列车夜间卧铺",
+        "fullName": "梦境回廊 · 列车夜间卧铺",
+        "displayName": "列车夜间卧铺",
+        "type": "scene",
+        "x": 365,
+        "y": -238,
+        "region": "异空间",
+        "parentId": "otherspace_dreamcorridor",
+        "parentName": "梦境回廊",
+        "tier": "子场景",
+        "brief": "长距离昏睡、历史坐标载入和同伴守夜"
+      },
+      {
+        "id": "otherspace_dreamcorridor_scene_4",
+        "name": "梦中候车厅",
+        "fullName": "梦境回廊 · 梦中候车厅",
+        "displayName": "梦中候车厅",
+        "type": "scene",
+        "x": 425,
+        "y": -236,
+        "region": "异空间",
+        "parentId": "otherspace_dreamcorridor",
+        "parentName": "梦境回廊",
+        "tier": "子场景",
+        "brief": "选择记忆门、残梦门、档案门、边界门和异次元门的中继空间"
+      },
+      {
+        "id": "otherspace_dreamcorridor_scene_5",
+        "name": "历史档案门",
+        "fullName": "梦境回廊 · 历史档案门",
+        "displayName": "历史档案门",
+        "type": "scene",
+        "x": 395,
+        "y": -294,
+        "region": "异空间",
+        "parentId": "otherspace_dreamcorridor",
+        "parentName": "梦境回廊",
+        "tier": "子场景",
+        "brief": "通往被照片、录音、病历或新闻剪报固定的过去现场，适合回溯旧案与灾难回声"
+      },
+      {
+        "id": "otherspace_dreamcorridor_scene_6",
+        "name": "异次元门",
+        "fullName": "梦境回廊 · 异次元门",
+        "displayName": "异次元门",
+        "type": "scene",
+        "x": 395,
+        "y": -226,
+        "region": "异空间",
+        "parentId": "otherspace_dreamcorridor",
+        "parentName": "梦境回廊",
+        "tier": "子场景",
+        "brief": "通往其他维度异世界，入梦者会获得临时身份、当地语言和回程锚限制"
+      },
+      {
+        "id": "otherspace_dreamcorridor_scene_7",
+        "name": "回程锚点室",
+        "fullName": "梦境回廊 · 回程锚点室",
+        "displayName": "回程锚点室",
+        "type": "scene",
+        "x": 437,
+        "y": -260,
+        "region": "异空间",
+        "parentId": "otherspace_dreamcorridor",
+        "parentName": "梦境回廊",
+        "tier": "子场景",
+        "brief": "现实同伴声音、脑电尖峰、锚物燃尽和人员清点集中"
       }
     ],
     "edges": [
@@ -5835,26 +5877,6 @@ var MAP_JSON_DATA = {
         "type": "scene"
       },
       {
-        "source": "otherspace_dreamcorridor",
-        "target": "otherspace_dreamcorridor_scene_1",
-        "type": "scene"
-      },
-      {
-        "source": "otherspace_dreamcorridor",
-        "target": "otherspace_dreamcorridor_scene_2",
-        "type": "scene"
-      },
-      {
-        "source": "otherspace_dreamcorridor",
-        "target": "otherspace_dreamcorridor_scene_3",
-        "type": "scene"
-      },
-      {
-        "source": "otherspace_dreamcorridor",
-        "target": "otherspace_dreamcorridor_scene_4",
-        "type": "scene"
-      },
-      {
         "source": "otherspace_nibelungen",
         "target": "otherspace_nibelungen_scene_1",
         "type": "scene"
@@ -5912,6 +5934,41 @@ var MAP_JSON_DATA = {
       {
         "source": "otherspace_thriller_paradise",
         "target": "otherspace_thriller_paradise_scene_7",
+        "type": "scene"
+      },
+      {
+        "source": "otherspace_dreamcorridor",
+        "target": "otherspace_dreamcorridor_scene_1",
+        "type": "scene"
+      },
+      {
+        "source": "otherspace_dreamcorridor",
+        "target": "otherspace_dreamcorridor_scene_2",
+        "type": "scene"
+      },
+      {
+        "source": "otherspace_dreamcorridor",
+        "target": "otherspace_dreamcorridor_scene_3",
+        "type": "scene"
+      },
+      {
+        "source": "otherspace_dreamcorridor",
+        "target": "otherspace_dreamcorridor_scene_4",
+        "type": "scene"
+      },
+      {
+        "source": "otherspace_dreamcorridor",
+        "target": "otherspace_dreamcorridor_scene_5",
+        "type": "scene"
+      },
+      {
+        "source": "otherspace_dreamcorridor",
+        "target": "otherspace_dreamcorridor_scene_6",
+        "type": "scene"
+      },
+      {
+        "source": "otherspace_dreamcorridor",
+        "target": "otherspace_dreamcorridor_scene_7",
         "type": "scene"
       }
     ]
