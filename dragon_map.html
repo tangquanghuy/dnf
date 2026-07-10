@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>龙族跑团 · 世界地图</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="./dragon_mapdata.js"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@400;600;700&display=swap"
     rel="stylesheet">
@@ -785,6 +786,38 @@
       z-index: 3;
     }
 
+    /* ============ RECOMMENDED SPAWN MARKER ============ */
+    .special-marker-recommended { position:absolute; pointer-events:none; z-index:-1; }
+    .special-marker-recommended::before {
+      content:''; position:absolute; top:50%; left:50%; width:86px; height:86px;
+      transform:translate(-50%,-50%); border-radius:50%;
+      background:radial-gradient(circle,rgba(134,239,172,.46) 0%,rgba(187,247,208,.2) 48%,transparent 72%);
+      animation:pulse-recommended 2.4s ease-in-out infinite;
+    }
+    .special-marker-recommended::after {
+      content:''; position:absolute; top:50%; left:50%; width:104px; height:104px;
+      transform:translate(-50%,-50%); border-radius:50%; border:2px solid rgba(74,222,128,.42);
+      animation:ring-recommended 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse-recommended {
+      0%,100% { opacity:.48; transform:translate(-50%,-50%) scale(.94); }
+      50% { opacity:1; transform:translate(-50%,-50%) scale(1.14); }
+    }
+    @keyframes ring-recommended {
+      0%,100% { opacity:.28; transform:translate(-50%,-50%) scale(.94); }
+      50% { opacity:.72; transform:translate(-50%,-50%) scale(1.08); }
+    }
+    .special-badge-recommended {
+      position:absolute; top:50%; left:calc(100% + 8px); transform:translateY(-50%);
+      white-space:nowrap; font-size:10px; font-weight:700; color:#278553;
+      background:rgba(240,253,244,.96); padding:3px 9px; border-radius:999px;
+      border:1px solid rgba(74,222,128,.5); letter-spacing:1px; pointer-events:none;
+      animation:badge-glow-recommended 2.4s ease-in-out infinite;
+    }
+    @keyframes badge-glow-recommended {
+      0%,100% { box-shadow:0 3px 10px rgba(74,222,128,.16); }
+      50% { box-shadow:0 3px 18px rgba(74,222,128,.42); }
+    }
     /* ============ PLAYER LOCATION MARKER ============ */
     /* 玩家当前位置标记 - 与入口标记同结构 */
     .special-marker-player {
@@ -1489,79 +1522,10 @@
     const IS_SPAWN_SELECT_MODE = MAP_MODE === 'spawn-select';
     const IS_EMBED_MODE = pageParams.get('embed') === '1' || embedFlag === '1' || embedFlag === 'true';
 
-    // 地图数据默认与当前 HTML 放在同一目录。HTML 从远程地址或 srcdoc + <base> 加载时，
-    // 这里会自动解析为对应的远程 dragon_mapdata.js；本地直接打开时仍会读取本地文件。
-    // 也可用 ?dragonMapDataUrl= / ?dataUrl=、embed bootstrap 的 dataUrl/mapDataUrl，
-    // 或 window.DRAGON_MAP_DATA_URL 显式覆盖数据地址。
-    const DRAGON_MAP_DATA_FILE = 'dragon_mapdata.js';
-
-    function resolveDragonMapDataSource() {
-      const configuredUrl = [
-        pageParams.get('dragonMapDataUrl'),
-        pageParams.get('dataUrl'),
-        EMBED_BOOTSTRAP_CONFIG.dataUrl,
-        EMBED_BOOTSTRAP_CONFIG.mapDataUrl,
-        typeof window.DRAGON_MAP_DATA_URL === 'string' ? window.DRAGON_MAP_DATA_URL : '',
-      ].map(value => String(value || '').trim()).find(Boolean) || '';
-
-      const rawUrl = configuredUrl || `./${DRAGON_MAP_DATA_FILE}`;
-      try {
-        return {
-          url: new URL(rawUrl, document.baseURI).toString(),
-          explicit: Boolean(configuredUrl),
-        };
-      } catch (error) {
-        console.warn('[龙族地图] 构造地图数据地址失败:', error);
-        return { url: rawUrl, explicit: Boolean(configuredUrl) };
-      }
-    }
-
-    function parseMapDataScript(scriptText) {
-      const source = String(scriptText || '').replace(/^\uFEFF/, '').trim();
-      if (!source) return null;
-
-      // 同时兼容纯 JSON，以及 dragon_mapdata.js 的 `var MAP_JSON_DATA = {...};` 格式。
-      const candidates = [source];
-      const assignmentMatch = source.match(/=\s*(\{[\s\S]*\})\s*;?\s*$/);
-      if (assignmentMatch) candidates.push(assignmentMatch[1]);
-
-      for (const candidate of candidates) {
-        try {
-          const parsed = JSON.parse(candidate);
-          if (parsed && parsed.mapData) return parsed;
-        } catch (error) {
-          // 继续尝试下一种格式。
-        }
-      }
-      return null;
-    }
-
-    function loadMapDataByScript(url, localVar) {
-      return new Promise(resolve => {
-
-        const script = document.createElement('script');
-        script.src = url;
-        script.async = true;
-        script.dataset.dragonMapData = '1';
-        script.onload = () => {
-          const loaded = window[localVar];
-          resolve(loaded && loaded.mapData ? loaded : null);
-        };
-        script.onerror = () => resolve(null);
-        document.head.appendChild(script);
-      });
-    }
-
-    const dragonMapDataSource = resolveDragonMapDataSource();
-
-    // 单层地图配置
+    // 与琥珀之剑、大明志异一致：由 head 中的同目录 script 直接提供 MAP_JSON_DATA。
+    // 当开局页把远程 HTML 注入 srcdoc 时，注入的 <base href> 会让相对路径仍指向远程同目录。
     const LAYER_CONFIGS = [
-      {
-        dataUrl: dragonMapDataSource.url,
-        explicitDataUrl: dragonMapDataSource.explicit,
-        localVar: 'MAP_JSON_DATA',
-        label: '地理总图',
-      },
+      { cdnUrl: '', localVar: 'MAP_JSON_DATA', label: '地理总图' },
     ];
 
     let currentLayerIndex = 0;
@@ -1570,50 +1534,28 @@
     async function loadLayerData(layerIdx) {
       if (layerDataCache[layerIdx]) return layerDataCache[layerIdx];
       const cfg = LAYER_CONFIGS[layerIdx];
-
-      // 宿主若已预注入数据，可直接使用；显式 dataUrl 则仍以远程覆盖地址为准。
-      const injectedData = window[cfg.localVar];
-      if (!cfg.explicitDataUrl && injectedData && injectedData.mapData) {
-        layerDataCache[layerIdx] = injectedData;
-        return injectedData;
-      }
-
-      // 1. 优先 fetch 远程/同目录数据，避免执行不必要的远程脚本。
-      if (cfg.dataUrl) {
+      // 1. 可选 CDN fetch（当前留空，与琥珀之剑实现保持一致）
+      if (cfg.cdnUrl) {
         try {
-          const resp = await fetch(cfg.dataUrl, {
-            method: 'GET',
-            mode: 'cors',
-            credentials: 'omit',
-          });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const parsed = parseMapDataScript(await resp.text());
-          if (!parsed) throw new Error('无法解析地图数据');
-          layerDataCache[layerIdx] = parsed;
-          return parsed;
-        } catch (error) {
-          console.warn(`[龙族地图] fetch 加载层${layerIdx + 1}失败，尝试 script 回退:`, error);
+          const resp = await fetch(cfg.cdnUrl);
+          if (resp.ok) {
+            const text = await resp.text();
+            // JS 文件格式: var XXX = {...}; 提取 JSON 部分
+            const match = text.match(/=\s*(\{[\s\S]*\})\s*;?\s*$/);
+            if (match) {
+              const json = JSON.parse(match[1]);
+              if (json && json.mapData) { layerDataCache[layerIdx] = json; return json; }
+            }
+          }
+        } catch (e) {
+          console.warn(`CDN 加载层${layerIdx + 1}失败:`, e.message);
         }
       }
-
-      // 2. file://、无 CORS 的远程地址等场景，回退为普通 script 加载。
-      if (cfg.dataUrl) {
-        const scriptData = await loadMapDataByScript(cfg.dataUrl, cfg.localVar);
-        if (scriptData && scriptData.mapData) {
-          layerDataCache[layerIdx] = scriptData;
-          return scriptData;
-        }
-      }
-
-      // 3. 最后检查宿主或其他脚本提供的全局变量。
+      // 2. 使用同目录 dragon_mapdata.js 已加载的全局变量
       const localData = window[cfg.localVar];
-      if (localData && localData.mapData) {
-        layerDataCache[layerIdx] = localData;
-        return localData;
-      }
+      if (localData && localData.mapData) { layerDataCache[layerIdx] = localData; return localData; }
       return null;
     }
-
     // 层级背景主题
     const LAYER_THEMES = [
       'radial-gradient(80% 60% at 42% 42%, rgba(46,138,214,0.07) 0%, transparent 55%), radial-gradient(55% 45% at 74% 44%, rgba(124,92,208,0.06) 0%, transparent 55%), radial-gradient(50% 40% at 16% 34%, rgba(24,158,144,0.06) 0%, transparent 55%), radial-gradient(120% 100% at 50% 0%, #ffffff 0%, #eef2f7 48%, #e2e8f0 100%)',
@@ -1622,7 +1564,7 @@
     (async function init() {
       const MAP_DATA = await loadLayerData(0);
       if (!MAP_DATA) {
-        document.body.innerHTML = '<div style="color:#3c4c62;font-size:20px;text-align:center;margin-top:40vh;">数据加载失败：请确保远程地址或同目录下存在 dragon_mapdata.js</div>';
+        document.body.innerHTML = '<div style="color:#3c4c62;font-size:20px;text-align:center;margin-top:40vh;">数据加载失败：请确保 dragon_mapdata.js 与地图文件位于同一目录</div>';
         return;
       }
 
@@ -1723,16 +1665,19 @@
         bloodIndex: '龙血指数',
         people: '人群',
         dailyLife: '日常',
+        peopleDaily: '人群生态与日常生活',
         shadow: '里世界',
+        shadowPattern: '里侧格局',
         factions: '相关势力',
         dragonTrace: '龙类痕迹',
         resources: '资源',
         access: '交通与进入',
-        threats: '威胁',
-        scenes: '场景',
+        resourcesAccess: '资源与入口',
+        threats: '威胁与麻烦',
+        scenes: '子场景',
         canon: '原著锚点',
         hooks: '剧情钩子',
-        legends: '都市传说',
+        legends: '传说与流言',
         parentName: '所属地点',
       };
 
@@ -1750,7 +1695,7 @@
         'brief', 'summary', 'physicalConsequences', 'encounters', 'loot',
         'lon', 'lat', 'independent', 'geoNote', 'displayName', 'parentId'
       ]);
-      const NODE_FIELD_PRIORITY = ['id', 'name', 'type', 'x', 'y', 'region', 'tier', 'dangerLevel', 'bloodIndex'];
+      const NODE_FIELD_PRIORITY = ['id', 'name', 'type', 'x', 'y', 'region', 'tier', 'dangerLevel', 'bloodIndex', 'newLandscape', 'peopleDaily', 'shadowPattern', 'dragonTrace', 'resourcesAccess', 'threats', 'legends', 'scenes'];
 
       function getOrderedNodeEntries(obj) {
         const order = new Map(NODE_FIELD_PRIORITY.map((key, index) => [key, index]));
@@ -1811,31 +1756,30 @@
         return;
       }
 
-      // 龙族设定：异空间（惊悚乐园/尼伯龙根/常世/雨夜列车/梦境回廊）与龙巢遗迹
-      // 是超自然险地，不能作为普通角色的出生点。
-      const BLOCKED_SPAWN_TYPES = new Set(['otherspace', 'nest', 'zone']);
+      // 仅特异空间及奥丁之渊不可作为出生点；普通龙巢、禁区、隔离区和现实场景均可选择。
+      const BLOCKED_SPAWN_IDS = new Set([
+        'otherspace_rain_train',
+        'otherspace_tokoyo',
+        'otherspace_nibelungen',
+        'otherspace_dreamcorridor',
+        'otherspace_thriller_paradise',
+        'nest_odin'
+      ]);
 
       function getSpawnBlockedReason(node) {
         if (!node) return '';
-        if (node.type === 'scene') {
-          return '子场景不能作为出生点，请选择其所属的主地点。';
-        }
-        if (node.independent) {
-          return '独立异空间不与现实相连，不能作为出生点。';
-        }
-        const type = String(node.type || '').toLowerCase();
-        if (BLOCKED_SPAWN_TYPES.has(type)) {
-          const typeLabel = (typeConfig[node.type] || typeConfig.poi || {}).label || node.type;
-          return `“${typeLabel}”属于超自然险地，不能作为出生点。`;
-        }
-        return '';
+        const nodeId = String(node.id || '').trim();
+        const parentId = String(node.parentId || '').trim();
+        const blockedId = BLOCKED_SPAWN_IDS.has(nodeId) ? nodeId : (BLOCKED_SPAWN_IDS.has(parentId) ? parentId : '');
+        if (!blockedId) return '';
+        if (blockedId === 'nest_odin') return '奥丁之渊无法作为初始出生点。';
+        return '该地点属于特异空间，无法作为初始出生点。';
       }
 
       function showSpawnBlockedMessage(node) {
         const reason = getSpawnBlockedReason(node) || '该地点不可选为出生点。';
         window.alert(reason);
       }
-
       function buildSpawnSelectionPayload(node) {
         return {
           名称: node.name || '',
@@ -1846,7 +1790,7 @@
           地区等级: node.dangerLevel || '',
           危险等级: node.dangerLevel || '',
           地貌特征: node.newLandscape || node.physicalConsequences?.terrain || node.summary || '',
-          聚落描述: node.brief || node.summary || '',
+          聚落描述: node.peopleDaily || node.brief || node.summary || '',
           周边威胁: node.monsters || node.environmentalHazards || node.danger || '',
           地点类型: (typeConfig[node.type] || typeConfig.poi || {}).label || '',
           节点ID: node.id || '',
@@ -1863,7 +1807,8 @@
         try {
           if (reason) {
             window.parent?.postMessage({ channel: SPAWN_CHANNEL, type: 'dragon_spawn_blocked', spawn: payload, reason }, '*');
-            showSpawnBlockedMessage(node);
+            // 嵌入开局页时由父页面统一弹窗，避免同一次选择出现两遍提示。
+            if (window.parent === window) showSpawnBlockedMessage(node);
           } else {
             updateSpawnSelectBanner(payload.名称);
             window.parent?.postMessage({ channel: SPAWN_CHANNEL, type: 'dragon_spawn_selected', spawn: payload }, '*');
@@ -2156,6 +2101,16 @@
           wrapper.appendChild(label);
 
           // ============ SPECIAL MARKERS ============
+          if (IS_SPAWN_SELECT_MODE && n.id === 'city_hometown') {
+            const markerBg = document.createElement('div');
+            markerBg.className = 'special-marker-recommended';
+            markerBg.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;';
+            wrapper.insertBefore(markerBg, iconDiv);
+            const badge = document.createElement('div');
+            badge.className = 'special-badge-recommended';
+            badge.textContent = '推荐出生点';
+            wrapper.appendChild(badge);
+          }
           if (n.independent) {
             const markerBg = document.createElement('div');
             markerBg.className = 'special-marker-layer3';
@@ -2979,7 +2934,7 @@
         if (layerIdx === currentLayerIndex) return;
         const data = await loadLayerData(layerIdx);
         if (!data) {
-          alert('地图数据加载失败，请确保远程地址或同目录下存在 dragon_mapdata.js');
+          alert('地图数据加载失败，请确保 dragon_mapdata.js 与地图文件位于同一目录');
           return;
         }
         currentLayerIndex = layerIdx;
