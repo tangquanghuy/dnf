@@ -1,6 +1,6 @@
 var MAP_JSON_DATA = {
   "mapData": {
-    "title": "都市龙族地理总图（AIRP重构版）",
+    "title": "都市地理总图",
     "projection": "aesthetic cartogram; rough west-east world order with hand-placed compact regional clusters",
     "scaleHint": "基于重构后的AIRP世界书字段：简介、地貌/街景、人群生态与日常生活、里侧格局、龙类痕迹、资源与入口、威胁与麻烦、传说与流言、子场景。坐标沿用原审美制图布局，节点内容已替换为重构版。",
     "routeGeneration": {
