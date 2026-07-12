@@ -6769,7 +6769,129 @@
                 font-size: 1rem;
             }
         }
-    </style>
+    
+        /* 技能树生成/修改操作区 */
+        .skill-gen-guide {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: -4px 0 8px;
+            color: #7a7469;
+            font-size: 0.72rem;
+            line-height: 1.4;
+        }
+
+        .skill-gen-guide i {
+            color: #c58a26;
+            font-size: 0.9rem;
+            flex: 0 0 auto;
+        }
+
+        .skill-gen-controls {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: stretch;
+            gap: 9px;
+        }
+
+        .skill-gen-controls.has-revision {
+            grid-template-columns: minmax(0, 1fr) auto auto;
+        }
+
+        .skill-gen-input {
+            box-sizing: border-box;
+            display: block;
+            width: 100%;
+            height: 48px;
+            min-height: 48px;
+            max-height: 160px;
+            margin: 0;
+            padding: 12px 14px;
+            border: 1px solid #e0e3e1;
+            border-radius: 10px;
+            outline: none;
+            resize: vertical;
+            background: var(--input-bg);
+            color: var(--primary);
+            font: 0.82rem/1.45 var(--font-ui);
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+        .skill-gen-input:focus {
+            border-color: rgba(45, 106, 79, 0.58);
+            box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.08);
+        }
+
+        .skill-gen-input::placeholder {
+            color: #a3a7a5;
+        }
+
+        .skill-gen-btn {
+            box-sizing: border-box;
+            height: 48px;
+            min-width: 118px;
+            margin: 0;
+            padding: 0 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 700;
+            font-family: var(--font-ui);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+            transition: transform .18s, box-shadow .18s, border-color .18s, background .18s;
+        }
+
+        .skill-gen-btn:not(:disabled):hover {
+            transform: translateY(-1px);
+        }
+
+        .skill-gen-btn:disabled {
+            cursor: not-allowed;
+            opacity: .48;
+        }
+
+        .skill-gen-btn-revise {
+            border: 1px solid rgba(45, 106, 79, 0.28);
+            background: rgba(45, 106, 79, 0.06);
+            color: #2d6a4f;
+        }
+
+        .skill-gen-btn-revise:not(:disabled):hover {
+            border-color: rgba(45, 106, 79, 0.48);
+            background: rgba(45, 106, 79, 0.11);
+            box-shadow: 0 5px 14px rgba(45, 106, 79, 0.10);
+        }
+
+        .skill-gen-btn-regenerate {
+            border: 1px solid transparent;
+            background: linear-gradient(135deg, #2d6a4f, #40916c);
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(45, 106, 79, 0.16);
+        }
+
+        .skill-gen-btn-regenerate:not(:disabled):hover {
+            box-shadow: 0 6px 15px rgba(45, 106, 79, 0.23);
+        }
+
+        @media (max-width: 720px) {
+            .skill-gen-controls.has-revision {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .skill-gen-controls.has-revision .skill-gen-input {
+                grid-column: 1 / -1;
+            }
+
+            .skill-gen-btn {
+                width: 100%;
+                min-width: 0;
+            }
+        }
+</style>
 </head>
 
 <body>
@@ -8270,19 +8392,24 @@
                                     <i class="ri-node-tree" style="color:var(--accent);"></i>
                                     {{ character.class }} 技能树
                                 </h4>
-                                <div v-if="!isPresetChar" style="display:flex; gap:10px; align-items:flex-end;">
-                                    <div style="flex:1;">
-                                        <textarea v-model="skillFlavorInput" placeholder="如需精确指定技能，请在这里填写（可选）"
-                                            style="padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 10px; font-size: 0.85rem; width: 100%; min-height: 48px; max-height: 200px; outline: none; transition: border-color 0.2s; resize: vertical; font-family: var(--font-ui); line-height: 1.5; background: var(--input-bg);"
-                                            :disabled="isGeneratingSkills"
-                                            @focus="$event.target.style.borderColor='#2d6a4f'"
-                                            @blur="$event.target.style.borderColor='#e0e0e0'"></textarea>
-                                    </div>
-                                    <button @click="generateSkillTree" :disabled="isGeneratingSkills"
-                                        style="background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%); color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-size: 0.85rem; font-weight:600; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap; flex-shrink:0; height:48px;"
-                                        :style="{opacity: isGeneratingSkills ? 0.7 : 1, transform: isGeneratingSkills ? 'scale(0.95)' : 'scale(1)'}">
-                                        <i class="ri-magic-line" :class="{'spin': isGeneratingSkills}"></i>
-                                        {{ isGeneratingSkills ? '生成中...' : '生成技能树' }}
+                                <div v-if="!isPresetChar && currentClassSkillTree" class="skill-gen-guide">
+                                    <i class="ri-error-warning-line"></i>
+                                    <span>按要求调整只修改相关技能；重新生成会重做整套未锁定技能。</span>
+                                </div>
+                                <div v-if="!isPresetChar" class="skill-gen-controls" :class="{ 'has-revision': currentClassSkillTree }">
+                                    <textarea v-model="skillFlavorInput" class="skill-gen-input"
+                                        :placeholder="currentClassSkillTree ? '填写想调整的技能或机制…' : '可选：指定想要的技能或战斗风格…'"
+                                        :disabled="isGeneratingSkills"></textarea>
+                                    <button v-if="currentClassSkillTree" class="skill-gen-btn skill-gen-btn-revise"
+                                        @click="reviseCurrentSkillTree" :disabled="isGeneratingSkills || !skillFlavorInput.trim()"
+                                        title="只修改要求涉及的技能，未提及的技能保持原样">
+                                        <i class="ri-edit-2-line"></i>
+                                        <span>{{ isGeneratingSkills ? '修改中' : '按要求调整' }}</span>
+                                    </button>
+                                    <button class="skill-gen-btn skill-gen-btn-regenerate" @click="generateSkillTree()"
+                                        :disabled="isGeneratingSkills" title="重新生成整套未锁定技能">
+                                        <i class="ri-magic-line" :class="{'spin':isGeneratingSkills}"></i>
+                                        <span>{{ isGeneratingSkills ? '生成中' : (currentClassSkillTree ? '重新生成' : '生成技能树') }}</span>
                                     </button>
                                 </div>
                                 <!-- 生成模式切换开关 -->
@@ -9665,6 +9792,9 @@
                                                 <i :class="buildReviewFeedbackCopied ? 'ri-check-line' : 'ri-file-copy-line'"></i>
                                                 {{ buildReviewFeedbackCopied ? '已复制，可粘贴到技能树补充要求' : '复制技能树修改建议' }}
                                             </button>
+                                            <button type="button" class="build-review-copy-btn" @click="reviseSkillTreeFromReview" :disabled="isGeneratingSkills">
+                                                <i class="ri-edit-2-line"></i> 按评审建议修改技能树
+                                            </button>
                                             <button type="button" class="build-review-back-btn" @click="goToStep(3)">
                                                 <i class="ri-arrow-left-line"></i> 返回职业技能
                                             </button>
@@ -10291,7 +10421,7 @@
     </div>
 
     <script>
-        const { createApp, ref, computed, reactive, markRaw, watch } = Vue;
+        const { createApp, ref, computed, reactive, markRaw, watch, nextTick } = Vue;
 
         // 癌骑士预设技能树数据
         const CANCER_KNIGHT_SKILL_TREE = { "职业名": "癌骑士", "职业描述": "与名为'癌'的异界生物共生的骑士，以生命为薪柴，通过解析万物的'简笔画'视界寻找奇迹。他是正在倒计时的殉道者，也是拖着棺椁行走的各个击破者。", "技能树": { "Tier1": [{ "名称": "溃烂突刺", "类型": "主动", "描述": "向前方快速突刺，癌细胞强化手臂肌肉并在剑尖形成硬化角质，对敌人造成穿刺伤害并附加中毒效果。" }, { "名称": "触须鞭笞", "类型": "主动", "描述": "肩部的癌分化出数条带刺触须，对中距离扇形区域内的敌人进行抽打，可击退弱小敌人。" }, { "名称": "恶性代偿", "类型": "特殊", "描述": "\\u201c别动，我来帮你堵住它。\\u201d\\n这不是神术的治愈，而是单纯的生物学修补。癌细胞疯狂增殖，用肉芽强制填补骑士的伤口，并分泌兴奋剂阻断痛觉神经。骑士感觉不到痛，但也正在失去对身体的感知。", "特殊效果": { "1": "主动激活。获得相当于最大生命值10%的[临时生命值]（作为护盾优先抵扣伤害）。若临时生命值在回合结束时仍存留，剩余数值转化为真实生命值回复。", "2": "获得相当于最大生命值12%的[临时生命值]。处于临时生命值保护下时，体质豁免检定获得+1加值。", "3": "获得相当于最大生命值14%的[临时生命值]。处于临时生命值保护下时，体质豁免检定获得+1加值。", "4": "获得相当于最大生命值16%的[临时生命值]。处于临时生命值保护下时，体质豁免检定获得+2加值。", "5": "获得相当于最大生命值18%的[临时生命值]。临时生命值耗尽时，骑士下一次命中检定获得[优势]（激怒）。", "6": "获得相当于最大生命值20%的[临时生命值]。临时生命值耗尽时，骑士下一次命中检定获得[优势]。", "7": "获得相当于最大生命值22%的[临时生命值]。处于临时生命值保护下时，免疫[中毒]状态。", "8": "获得相当于最大生命值24%的[临时生命值]。处于临时生命值保护下时，免疫[中毒]状态。", "9": "获得相当于最大生命值26%的[临时生命值]。临时生命值被击破时，对周围敌人造成等同于等级x10的酸液溅射伤害。", "10": "获得相当于最大生命值28%的[临时生命值]。启动时，清除自身所有物理系负面状态（流血/残废）。", "11": "获得相当于最大生命值30%的[临时生命值]。[临时生命值]转化为真实生命值的比例提升至150%。", "12": "获得相当于最大生命值35%的[临时生命值]。处于临时生命值保护下时，获得[坚韧]（受到的物理伤害-3）。", "13": "获得相当于最大生命值40%的[临时生命值]。处于临时生命值保护下时，获得[坚韧]（受到的物理伤害-5）。", "14": "获得相当于最大生命值45%的[临时生命值]。临时生命值耗尽时，骑士无需动作即可立刻发动一次借机攻击。", "15": "获得相当于最大生命值50%的[临时生命值]。只要此临时生命值未耗尽，骑士因任何原因生命值归零时，强制保留1点生命值并进入[不死]状态1回合。" } }], "Tier2": [{ "名称": "钙化反击", "类型": "主动", "描述": "瞬间将肩部的癌膨胀并硬化为几丁质盾牌格挡攻击，若格挡成功，盾牌表面会弹射出尖刺反击攻击者。" }, { "名称": "畸变协奏", "类型": "主动", "描述": "骑士挥剑的同时，癌控制触手从刁钻角度发起同步攻击。一人一癌如同两名配合默契的剑客同时出招，令敌人顾此失彼，无法防御。" }, { "名称": "简笔画世界", "类型": "职业特殊", "描述": "骑士闭上双眼，由癌接管视觉。世界化为黑板上的粉笔线条，万物的'阿喀琉斯之踵'以高亮节点显示。这是骑士越虚弱越强大的感知领域。", "特殊效果": { "1": "启动后，暴击伤害增加50%。攻击时视为降低目标50%的护甲/防御等级。若当前生命值低于30%，攻击必定命中。" } }], "Tier3": [{ "名称": "几何解构", "类型": "主动", "描述": "在\\u201c简笔画世界\\u201d的指引下，沿着物体结构的脆弱线条挥出完美的一剑，造成巨大的单体物理伤害，最终在技能伤害倍率基础上额外对单个目标再次造成50%伤害。", "特殊效果": { "1": "在技能伤害倍率基础上额外对单个目标再次造成50%伤害。" } }, { "名称": "恶性增殖", "类型": "主动", "描述": "将癌的一部分组织注入地下，随后在前方区域爆发出一片锋利的骨刺与触手丛林，对范围内敌人造成多段伤害并束缚。", "特殊效果": { "1": "对范围内敌人造成多段伤害并附加[束缚]状态。" } }, { "名称": "生命透支", "类型": "特殊", "描述": "主动通过通过激素刺激让癌细胞侵蚀肌肉纤维，以还要承受剧痛和生命流逝为代价，换取爆发性的力量。", "特殊效果": { "1": "主动消耗5%当前生命值，最终伤害增加10%，持续2回合", "2": "主动消耗5%当前生命值，最终伤害增加12%，持续2回合", "3": "主动消耗5%当前生命值，最终伤害增加15%，持续3回合", "4": "主动消耗6%当前生命值，最终伤害增加18%，持续3回合", "5": "主动消耗6%当前生命值，最终伤害增加22%，持续3回合", "6": "主动消耗7%当前生命值，最终伤害增加26%，持续4回合", "7": "主动消耗7%当前生命值，最终伤害增加30%，持续4回合", "8": "主动消耗8%当前生命值，最终伤害增加35%，持续4回合", "9": "主动消耗9%当前生命值，最终伤害增加40%，持续5回合", "10": "主动消耗10%当前生命值，最终伤害增加50%，且下一次攻击造成的伤害转化为生命值，持续5回合" } }], "Tier4": [{ "名称": "血肉堡垒", "类型": "主动", "描述": "癌瞬间恶性膨胀，化为超越骑士体型的巨大血肉巨盾，向前推进冲撞，击飞沿途所有敌人并抵挡海量伤害。" }, { "名称": "暴食吞噬", "类型": "主动", "描述": "释放巨大的捕食触手将敌人擒抱并拉至身前，直接进行生物层面的吞噬与吸收，造成大量伤害并回复自身生命值。" }, { "名称": "细胞超频", "类型": "特殊", "描述": "让癌细胞全面接管神经信号传导，痛觉被彻底切断，反应速度突破人类极限，周围的时间彷佛变慢。", "特殊效果": { "1": "受到的伤害减少10%，回避率提升5%，持续2回合", "2": "受到的伤害减少12%，回避率提升6%，持续2回合", "3": "受到的伤害减少15%，回避率提升8%，持续2回合", "4": "受到的伤害减少17%，回避率提升10%，持续3回合", "5": "受到的伤害减少20%，回避率提升12%，持续3回合", "6": "受到的伤害减少22%，回避率提升15%，持续3回合", "7": "受到的伤害减少25%，回避率提升20%，免疫恐惧与魅惑状态，持续4回合" } }], "Tier5": [{ "名称": "扩散斩击", "类型": "主动", "描述": "利用触手弹射进行超高速移动，在战场上留下数道残影，同时对多个目标进行致命斩击，如同癌症扩散般无法阻挡。并将其中一名敌人标记为[原发病灶]。该状态持续3回合。期间该敌人受到的所有伤害，会有50%以\\u201c扩散伤害\\u201d的形式传递给场上所有其他敌人（链接伤害）" }, { "名称": "终末视界", "类型": "主动", "描述": "简笔画世界完全展开，视界内所有敌人的'存在'都被标记为可被擦除的线条。骑士挥剑，对全屏敌人造成无视防御的真实伤害。伤害结算后，斩杀生命值低于20%的敌人。" }, { "名称": "解离之癌", "类型": "主动", "描述": "短暂解除对癌的压制，无数漆黑的触手从体内爆射而出，对周围大范围内的敌人进行无差别的疯狂鞭挞与穿刺。" }], "觉醒": [{ "名称": "荒原骑士", "类型": "主动", "阶位": "觉醒一", "描述": "骑士的意志与癌的本能达成完美共鸣。化身为行走于生与死边界的荒原骑士，周围环境受到侵蚀化为灰白荒原，造成大量伤害，并暂时大幅提升全属性与技能伤害。" }, { "名称": "共生升格", "类型": "主动", "阶位": "觉醒二", "描述": "癌开始向'星潜者'的完全体形态进化，骑士被包裹在神圣而诡异的半透明几丁质装甲中，获得飞行能力与毁灭性的能量释放。" }, { "名称": "第一天启·白马", "类型": "主动", "阶位": "觉醒三", "描述": "'我就看着，见有一匹白马，骑在马上的拿着弓，并有冠冕赐给他。他便出来，胜了又要胜。'——彻底释放天启之力，将整个战场拖入简笔画世界，行使'勾销'权能，将敌人的存在本身如同粉笔字般擦除。" }] } };
@@ -19886,7 +20016,7 @@
 
 `;
 
-                const buildSkillGenerationPromptBase = () => {
+                const buildSkillGenerationPromptBase = (includeFlavor = true) => {
                     let prompt = SKILL_GEN_PROMPT_TEMPLATE;
 
                     if (isCustomClass.value) {
@@ -19904,7 +20034,7 @@
                         prompt += customInfo;
                     }
 
-                    if (skillFlavorInput.value && skillFlavorInput.value.trim()) {
+                    if (includeFlavor && skillFlavorInput.value && skillFlavorInput.value.trim()) {
                         prompt += `\n\n【额外风格要求】${skillFlavorInput.value.trim()}`;
                     }
 
@@ -19931,6 +20061,36 @@ ${lockedSkillsJson}
 
                 const buildFullSkillTreePrompt = () => {
                     return `${buildSkillGenerationPromptBase()}\n\n【生成任务】\n请为职业【${character.class}】生成完整技能树，严格按照上述 JSON 格式输出，不要输出任何 JSON 外文本。`;
+                };
+
+                const buildSkillTreeRevisionPrompt = (sourceTree, revisionRequest) => {
+                    const sourcePayload = { 职业名: character.class, 技能树: cloneJson(sourceTree) };
+                    return `${buildSkillGenerationPromptBase(false)}
+
+【任务切换：局部修订现有技能树】
+这不是重新生成任务。必须以“现有技能树”为唯一基线，只提交修改意见确实涉及的技能；未列入“技能修改”的技能会由程序原样保留。
+
+修订规则：
+1. 禁止重做整棵技能树，禁止为了统一文风改写无关技能。
+2. 每条修改必须用“原阶位 + 原技能名”准确定位现有技能，不得虚构定位。
+3. “修改后技能”必须给出该技能的完整对象。除非意见明确要求，否则保留原名称、类型、描述与核心机制。
+4. 修改数量应尽可能少，最多 10 个技能。
+5. 已锁定技能不得修改；建议与锁定技能冲突时跳过。
+6. 本任务输出格式覆盖上方完整技能树输出要求。只输出合法 JSON，不要 Markdown 或额外文字：
+{
+  "修改摘要": ["本次实际处理的意见"],
+  "技能修改": [{
+    "原阶位": "现有树中的原阶位，如基础/转职/进阶/必杀/奥义/觉醒一/觉醒二/觉醒三",
+    "原技能名": "现有技能名称",
+    "修改后技能": { "名称": "...", "类型": "...", "描述": "...", "特殊效果": { "1": "..." } }
+  }]
+}
+
+【修改意见】
+${String(revisionRequest || '').trim()}
+
+【现有技能树（只读基线）】
+${JSON.stringify(sourcePayload, null, 2)}`;
                 };
 
                 const buildSkillTreeSkeletonPrompt = () => {
@@ -20052,6 +20212,58 @@ ${lockedSkillsJson}
                     throw new Error("TavernHelper.generateRaw API 不可用，请确保 SillyTavern 版本支持 generateRaw 接口");
                 };
 
+                const pickBestSkillRevisionJson = (text) => {
+                    const src = String(text || '');
+                    const candidates = [];
+                    const codeBlockRegex = /```(?:json|JSON)?\s*([\s\S]*?)```/g;
+                    let match;
+                    while ((match = codeBlockRegex.exec(src)) !== null) {
+                        const payload = String(match[1] || '').trim();
+                        if (payload) candidates.push(payload);
+                    }
+                    for (const payload of extractTopLevelJsonObjects(src)) candidates.push(String(payload || '').trim());
+                    let best = null;
+                    for (const payload of candidates) {
+                        const parsed = parseJsonLenient(payload);
+                        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) continue;
+                        const changes = Array.isArray(parsed['技能修改']) ? parsed['技能修改'] : null;
+                        if (!changes) continue;
+                        const score = changes.length * 10 + (Array.isArray(parsed['修改摘要']) ? 5 : 0);
+                        if (!best || score > best.score) best = { parsed, score };
+                    }
+                    if (!best) throw new Error('AI回复中未找到合法的技能局部修订包');
+                    return best.parsed;
+                };
+
+                const applySkillRevisionPatch = (sourceTree, revisionPayload) => {
+                    const nextTree = cloneJson(sourceTree) || {};
+                    const changes = Array.isArray(revisionPayload?.['技能修改']) ? revisionPayload['技能修改'].slice(0, 10) : [];
+                    let appliedCount = 0;
+                    const skipped = [];
+                    for (const change of changes) {
+                        const rawTier = String(change?.['原阶位'] || '').trim();
+                        const tierKey = SKILL_TIER_KEY_MAP[rawTier] || rawTier;
+                        const originalName = String(change?.['原技能名'] || '').trim();
+                        const replacement = cloneJson(change?.['修改后技能']);
+                        const tierSkills = nextTree?.[tierKey];
+                        if (!tierKey || !originalName || !replacement || typeof replacement !== 'object' || !Array.isArray(tierSkills)) {
+                            skipped.push(`${rawTier || '未知阶位'}/${originalName || '未知技能'}：定位或对象无效`); continue;
+                        }
+                        const index = tierSkills.findIndex(skill => String(skill?.名称 || '').trim() === originalName);
+                        if (index < 0) { skipped.push(`${tierKey}/${originalName}：未找到`); continue; }
+                        if (isSkillLocked(tierKey, originalName, character.class)) { skipped.push(`${tierKey}/${originalName}：已锁定`); continue; }
+                        tierSkills[index] = {
+                            ...cloneJson(tierSkills[index]),
+                            ...replacement,
+                            阶位: tierKey
+                        };
+                        appliedCount++;
+                    }
+                    if (appliedCount === 0) throw new Error(`修订包没有可应用的技能修改${skipped.length ? `（${skipped.join('；')}）` : ''}`);
+                    if (skipped.length) console.warn('[技能树局部修订] 部分修改已跳过:', skipped);
+                    return { tree: nextTree, appliedCount, skipped };
+                };
+
                 const normalizeGeneratedSkillTreePayload = (parsed) => {
                     const normalizedPayload = cloneJson(parsed) || {};
                     if (!normalizedPayload['技能树']) throw new Error("JSON结构不符合规范: 缺少'技能树'字段");
@@ -20112,9 +20324,12 @@ ${lockedSkillsJson}
                 };
 
                 // 核心函数：生成技能树（支持两种模式切换）
-                const generateSkillTree = async () => {
+                const generateSkillTree = async (options = null) => {
                     if (!character.class) return;
 
+                    const revisionRequest = String(options?.revisionRequest || '').trim();
+                    const revisionSourceTree = cloneJson(options?.sourceTree || currentClassSkillTree.value);
+                    const isRevision = !!(revisionRequest && revisionSourceTree);
                     const previousSkillTree = cloneJson(skillTreeData.value);
                     const previousSkillTreeForClass = skillTreeForClass.value;
                     const previousClassWarnings = cloneJson(skillSoftWarningMap.value?.[character.class] || null);
@@ -20122,7 +20337,7 @@ ${lockedSkillsJson}
 
                     isGeneratingSkills.value = true;
                     skillGenerationError.value = '';
-                    skillGenerationPhaseText.value = useSegmentedSkillGeneration.value ? '阶段 1/2：生成技能树骨架' : '单步生成：生成完整技能树';
+                    skillGenerationPhaseText.value = isRevision ? '按要求修改：生成技能修改补丁' : (useSegmentedSkillGeneration.value ? '阶段 1/2：生成技能树骨架' : '单步生成：生成完整技能树');
                     showSkillReadyBubble.value = false;
 
                     // 启动计时器
@@ -20135,7 +20350,15 @@ ${lockedSkillsJson}
                         const targetWindow = getSkillGenerationTargetWindow();
                         let parsed = null;
 
-                        if (useSegmentedSkillGeneration.value) {
+                        if (isRevision) {
+                            const revisionPrompt = buildSkillTreeRevisionPrompt(revisionSourceTree, revisionRequest);
+                            const revisionResultText = await requestSkillGenerationFromApi(targetWindow, revisionPrompt);
+                            if (!revisionResultText) throw new Error("局部修订超时或无响应");
+                            const revisionPayload = pickBestSkillRevisionJson(revisionResultText);
+                            const patchResult = applySkillRevisionPatch(revisionSourceTree, revisionPayload);
+                            parsed = { 职业名: character.class, 技能树: patchResult.tree };
+                            console.log(`[技能树局部修订] 已应用 ${patchResult.appliedCount} 项修改`);
+                        } else if (useSegmentedSkillGeneration.value) {
                             const skeletonPrompt = buildSkillTreeSkeletonPrompt();
                             const skeletonResultText = await requestSkillGenerationFromApi(targetWindow, skeletonPrompt);
                             if (!skeletonResultText) throw new Error("第一步生成超时或无响应");
@@ -20189,6 +20412,13 @@ ${lockedSkillsJson}
                         isGeneratingSkills.value = false;
                         skillGenerationPhaseText.value = '';
                     }
+                };
+
+                const reviseCurrentSkillTree = async () => {
+                    const request = String(skillFlavorInput.value || '').trim();
+                    if (!currentClassSkillTree.value) { skillGenerationError.value = '当前职业还没有可优化的技能树。'; return; }
+                    if (!request) { skillGenerationError.value = '请先填写要修改的具体意见。'; return; }
+                    await generateSkillTree({ revisionRequest: request, sourceTree: cloneJson(currentClassSkillTree.value) });
                 };
 
                 // ==================== 构筑共鸣评议 ====================
@@ -20474,8 +20704,8 @@ ${lockedSkillsJson}
                     return copied;
                 };
 
-                const copyBuildReviewSkillFeedback = async () => {
-                    if (!buildReviewResult.value) return;
+                const buildReviewSkillFeedbackText = () => {
+                    if (!buildReviewResult.value) return '';
                     const result = buildReviewResult.value;
                     const dimensionLines = buildReviewDimensionList.value
                         .map(item => `- ${item.name}（${item.score}/${item.max}）：${item.note}`)
@@ -20487,7 +20717,12 @@ ${lockedSkillsJson}
                         result.额外扣分?.小作文与冗余?.扣分 < 0 ? `- 小作文与冗余 ${result.额外扣分.小作文与冗余.扣分}：${result.额外扣分.小作文与冗余.说明}` : '',
                         result.额外扣分?.滥强与越级?.扣分 < 0 ? `- 滥强与越级 ${result.额外扣分.滥强与越级.扣分}：${result.额外扣分.滥强与越级.说明}` : ''
                     ].filter(Boolean).join('\n') || '- 无额外扣分';
-                    const text = `请根据以下构筑评议重新生成技能树。保留职业定位、核心幻想和已有亮点，只修改技能树中确实需要调整的部分；不要强行添加资源循环、额外代价或团队功能。\n\n【角色与职业】\n${displayRaceName.value} / ${displayClassName.value} / Lv.${characterLevel.value}\n\n【总体评价】\n${result.一句话评价 || result.评语 || ''}\n\n【五维反馈】\n${dimensionLines}\n\n【额外扣分】\n${penaltyLines}\n\n【必须保留】\n${highlightLines}\n\n【需要处理】\n${riskLines}\n\n【修改方向】\n${adviceLines}`;
+                    return `请根据以下构筑评议局部优化现有技能树。保留职业定位、核心幻想、已有亮点以及所有未被意见点名的技能；只修改确实需要调整的技能，不要重新设计整棵技能树，不要强行添加资源循环、额外代价或团队功能。\n\n【角色与职业】\n${displayRaceName.value} / ${displayClassName.value} / Lv.${characterLevel.value}\n\n【总体评价】\n${result.一句话评价 || result.评语 || ''}\n\n【五维反馈】\n${dimensionLines}\n\n【额外扣分】\n${penaltyLines}\n\n【必须保留】\n${highlightLines}\n\n【需要处理】\n${riskLines}\n\n【修改方向】\n${adviceLines}`;
+                };
+
+                const copyBuildReviewSkillFeedback = async () => {
+                    const text = buildReviewSkillFeedbackText();
+                    if (!text) return;
                     const copied = await writeTextToClipboard(text);
                     if (!copied) {
                         alert('复制失败，请手动选择评议内容。');
@@ -20495,6 +20730,16 @@ ${lockedSkillsJson}
                     }
                     buildReviewFeedbackCopied.value = true;
                     setTimeout(() => { buildReviewFeedbackCopied.value = false; }, 2200);
+                };
+
+                const reviseSkillTreeFromReview = async () => {
+                    const text = buildReviewSkillFeedbackText();
+                    if (!text || !currentClassSkillTree.value || isGeneratingSkills.value) return;
+                    const sourceTree = cloneJson(currentClassSkillTree.value);
+                    skillFlavorInput.value = text;
+                    goToStep(3);
+                    await nextTick();
+                    await generateSkillTree({ revisionRequest: text, sourceTree });
                 };
 
                 const runBuildReview = async () => {
@@ -20821,14 +21066,14 @@ ${lockedSkillsJson}
                     // 自定义职业
                     isCustomClass, customClassName, customClassStyle, customClassWeapon, customClassCombatStyle,
                     // Skill Gen
-                    isGeneratingSkills, skillTreeData, currentClassSkillTree, skillGenerationError, generateSkillTree, getSkillIcon, isSkillLocked, toggleSkillLock, hasSkillSoftWarning, getSkillSoftWarnings, currentSkillWarningCount,
+                    isGeneratingSkills, skillTreeData, currentClassSkillTree, skillGenerationError, generateSkillTree, reviseCurrentSkillTree, getSkillIcon, isSkillLocked, toggleSkillLock, hasSkillSoftWarning, getSkillSoftWarnings, currentSkillWarningCount,
                     skillFlavorInput, selectedSkill, showSkillDetail, skillPopupPosition, closeSkillDetail,
                     isEditingSkill, skillEditDraft, skillEditError, startEditSkill, cancelEditSkill, saveSkillEdit,
                     generationTimer, formatTime, showSkillReadyBubble, goToSkillTree, usePresetAndWorldbook, useSegmentedSkillGeneration, skillGenerationPhaseText,
                     currentSkillHardWarningCount, currentSkillSoftWarningCount, hasSkillHardWarning,
                     // 构筑共鸣评议
                     isReviewingBuild, buildReviewTimer, buildReviewError, buildReviewResult, buildReviewUseContext,
-                    buildReviewFeedbackCopied, copyBuildReviewSkillFeedback,
+                    buildReviewFeedbackCopied, copyBuildReviewSkillFeedback, reviseSkillTreeFromReview,
                     buildReviewStale, buildReviewRewardActive, buildReviewDimensionList, runBuildReview,
                     buildReviewBonusRP, buildReviewBonusAttributePoints,
                     // 博德之门3购点法
