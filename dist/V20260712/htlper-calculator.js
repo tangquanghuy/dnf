@@ -593,7 +593,7 @@
         const level = safeParseInt(actor?.等级, 1);
         const constitution = safeParseInt(actor?.属性?.体质, 10);
         if (isNewCombatValueMode(rootData)) {
-            return Math.max(1, 10 + (5 + calcDndModifier(constitution)) * Math.max(0, level - 1) + equipHpBonus);
+            return Math.max(1, constitution + (5 + calcDndModifier(constitution)) * Math.max(0, level - 1) + equipHpBonus);
         }
         if ((actor?.种族 || '') === '巨人种') {
             return Math.max(1, level * constitution * 3 + equipHpBonus);
