@@ -2742,6 +2742,71 @@
         });
     }
 
+    // 位于「当前事件」下、只允许合并不允许整体丢失的对象键。
+    // 典型隐患：AI 结算/进入新副本时用 { "op":"add", "path":"/当前事件/惊悚乐园副本", "value": { 单个副本 } }
+    // 会把之前已完成副本的记录整体冲掉；或直接 remove 整个对象/整个「当前事件」导致进度丢失。
+    // 如需保护更多进度对象（例如龙族副本），在此追加键名即可。
+    const MERGE_PROTECTED_EVENT_KEYS = ['惊悚乐园副本', '惊悚乐园副本评价'];
+
+    function isPlainObject(value) {
+        return !!value && typeof value === 'object' && !Array.isArray(value);
+    }
+
+    // 以新对象为基础，补回旧对象中缺失的子键；同名子键保留新值
+    // （允许「进行中→已完成」、评价刷新等合法更新），只防止旧子键被整体抹掉。
+    function mergePreserveOldChildKeys(oldObj, newObj) {
+        const merged = isPlainObject(newObj) ? clonePlainValue(newObj) : {};
+        if (isPlainObject(oldObj)) {
+            for (const [key, oldChild] of Object.entries(oldObj)) {
+                if (!Object.prototype.hasOwnProperty.call(merged, key)) {
+                    merged[key] = clonePlainValue(oldChild);
+                }
+            }
+        }
+        return merged;
+    }
+
+    function guardMergeProtectedEvents(statData, statDataBefore) {
+        const oldEvents = statDataBefore?.当前事件;
+        if (!isPlainObject(oldEvents)) return;
+
+        // 收集旧数据中真实存在、且非空的受保护对象
+        const protectedOldObjs = {};
+        for (const key of MERGE_PROTECTED_EVENT_KEYS) {
+            const oldObj = oldEvents[key];
+            if (isPlainObject(oldObj) && Object.keys(oldObj).length > 0) {
+                protectedOldObjs[key] = oldObj;
+            }
+        }
+        if (Object.keys(protectedOldObjs).length === 0) return;
+
+        // 情况A：整个「当前事件」被删除或置空 → 重建容器，仅放回受保护对象，其余照常删除
+        if (!isPlainObject(statData.当前事件)) {
+            statData.当前事件 = {};
+            for (const [key, oldObj] of Object.entries(protectedOldObjs)) {
+                statData.当前事件[key] = clonePlainValue(oldObj);
+                console.warn(`[变量守卫] ⚠️「当前事件」被整体删除，已保留「${key}」防止副本进度丢失`);
+            }
+            return;
+        }
+
+        // 情况B：容器仍在，但受保护对象被整体删除或被 add 覆盖导致旧子键丢失 → 合并补回
+        const newEvents = statData.当前事件;
+        for (const [key, oldObj] of Object.entries(protectedOldObjs)) {
+            const newObj = newEvents[key];
+            const merged = mergePreserveOldChildKeys(oldObj, newObj);
+            if (!hasChanged(newObj, merged)) continue;
+
+            const lostKeys = Object.keys(oldObj).filter(k => !isPlainObject(newObj) || !Object.prototype.hasOwnProperty.call(newObj, k));
+            newEvents[key] = merged;
+            if (!isPlainObject(newObj)) {
+                console.warn(`[变量守卫] ⚠️「当前事件/${key}」被整体删除，已恢复子项：${lostKeys.join('、') || '（无）'}`);
+            } else {
+                console.warn(`[变量守卫] ⚠️「当前事件/${key}」被整体覆盖，已补回丢失的子项：${lostKeys.join('、') || '（无）'}`);
+            }
+        }
+    }
+
     function guardProtectedFields(statData, statDataBefore) {
         if (!statDataBefore) return;
         console.log(`[变量守卫调试] 开始检查, PROTECTED_PATHS=${JSON.stringify(PROTECTED_PATHS)}`);
@@ -2755,6 +2820,7 @@
             }
         }
 
+        guardMergeProtectedEvents(statData, statDataBefore);
         guardBriefDisplayBonds(statData, statDataBefore);
         applyStarterTeammateTemplatesOnNewBonds(statData, statDataBefore);
 
