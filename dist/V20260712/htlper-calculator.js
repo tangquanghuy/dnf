@@ -2745,8 +2745,8 @@
     // 位于「当前事件」下、只允许合并不允许整体丢失的对象键。
     // 典型隐患：AI 结算/进入新副本时用 { "op":"add", "path":"/当前事件/惊悚乐园副本", "value": { 单个副本 } }
     // 会把之前已完成副本的记录整体冲掉；或直接 remove 整个对象/整个「当前事件」导致进度丢失。
-    // 如需保护更多进度对象（例如龙族副本），在此追加键名即可。
-    const MERGE_PROTECTED_EVENT_KEYS = ['惊悚乐园副本', '惊悚乐园副本评价'];
+    // 如需保护更多进度对象，在此追加键名即可。
+    const MERGE_PROTECTED_EVENT_KEYS = ['惊悚乐园副本', '惊悚乐园副本评价', '龙族副本'];
 
     function isPlainObject(value) {
         return !!value && typeof value === 'object' && !Array.isArray(value);
