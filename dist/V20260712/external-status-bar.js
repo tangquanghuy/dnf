@@ -450,7 +450,6 @@
     const mode = typeof modeOrData === 'string' ? normalizeCombatValueMode(modeOrData) : getCombatValueMode(modeOrData);
     return SKILL_TIER_CONFIG_BY_MODE[mode] || SKILL_TIER_CONFIG_BY_MODE.classic;
   };
-  const calcDndModifier = (value) => Math.floor(((parseInt(value, 10) || 10) - 10) / 2);
   const calcAttackCountByLevel = (level) => {
     const lv = parseInt(level, 10) || 1;
     if (lv >= 50) return 3;
@@ -458,10 +457,14 @@
     return 1;
   };
   const calcHpByMode = (人物, data, hpBonus = 0, constitutionOverride = null) => {
-    const level = parseInt(人物?.等级, 10) || 1;
-    const con = constitutionOverride === null ? (parseFloat(人物?.属性?.体质) || 10) : constitutionOverride;
+    const level = Math.max(1, parseInt(人物?.等级, 10) || 1);
+    const rawCon = constitutionOverride === null ? (parseFloat(人物?.属性?.体质) || 10) : constitutionOverride;
+    const con = Math.max(1, Number(rawCon) || 10);
     if (isNewCombatValueMode(data)) {
-      return Math.max(1, 10 + (5 + calcDndModifier(con)) * Math.max(0, level - 1) + hpBonus);
+      // 与开局及辅助计算脚本保持一致：总等级成长计算完成后向下取整。
+      const growthTimesTwo = con + Math.max(0, con - 10);
+      const levelGrowth = Math.floor(growthTimesTwo * Math.max(0, level - 1) / 2);
+      return Math.max(1, con + levelGrowth + hpBonus);
     }
     if ((人物?.种族 || '') === '巨人种') return Math.max(1, level * con * 3 + hpBonus);
     return Math.max(1, level * con * 2 + hpBonus);
