@@ -17111,6 +17111,7 @@
                         mvuData.stat_data.系统配置.世界观 = worldviewLabel || '创世回廊';
                         if (worldviewLabel === '琥珀之剑') {
                             mvuData.stat_data.世界信息.世界剧情 = '布契之夜';
+                            mvuData.stat_data.世界信息.年历 = '375年';
                         }
                         if (worldviewLabel === '大明志异') {
                             mvuData.stat_data.世界信息.年历 = '1560年3月1日';
@@ -17680,7 +17681,7 @@
                                         : (mvuData.stat_data.世界信息.世界剧情 || '');
                         mvuData.stat_data.世界信息 = {
                             ...mvuData.stat_data.世界信息,
-                            年历: isDragonWorldview.value ? '2026年3月1日' : (mvuData.stat_data.世界信息.年历 || '阿拉德历990年3月1日'),
+                            年历: isAmberWorldview.value ? '375年' : (isDragonWorldview.value ? '2026年3月1日' : (mvuData.stat_data.世界信息.年历 || '阿拉德历990年3月1日')),
                             时间: mvuData.stat_data.世界信息.时间 || '清晨',
                             世界剧情: resolvedWorldStory,
                             世界观: currentWorldviewMvuLabel.value,
