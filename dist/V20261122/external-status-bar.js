@@ -11,7 +11,10 @@
   "use strict";
 
   const SCRIPT_ID = "rpg_status_bar";
-  const previousCleanup = typeof window !== "undefined" ? window[SCRIPT_ID + "_cleanup"] : null;
+  const previousScriptCleanup = window[SCRIPT_ID + "_cleanup"];
+  const hostApi = new Map();
+  let mountedWindow = null;
+  let disposed = false;
   const STORAGE_KEY = "rpg_status_bar_pos";
   const VALID_THEMES = new Set(["warm-white", "dark", "green", "classic-dark"]);
   const DARK_THEMES = new Set(["dark", "classic-dark"]);
@@ -46,6 +49,9 @@
       return { window: window, $: window.jQuery, getDB: () => window.AutoCardUpdaterAPI };
     }
   };
+
+  // 酒馆脚本在隐藏 iframe 中执行，jQuery 的界面节点却挂载到宿主文档。
+  const getPanelDocument = () => getCore().$("body")[0]?.ownerDocument || document;
 
   // 旧存档仍可提供“神器”，所有展示与新写入统一使用“卓越”。
   const normalizeQualityName = (value) => value === '神器' ? '卓越' : value;
@@ -2757,7 +2763,7 @@ ${lockedSkillsJson}
   const applyPanelTheme = (theme) => {
     const normalizedTheme = VALID_THEMES.has(theme) ? theme : "warm-white";
     const appearance = THEME_APPEARANCE[normalizedTheme] || THEME_APPEARANCE["warm-white"];
-    const panelEl = document.getElementById(`${SCRIPT_ID}-panel`);
+    const panelEl = getPanelDocument().getElementById(`${SCRIPT_ID}-panel`);
     const appFrameEl = panelEl?.querySelector(`#${SCRIPT_ID}-app-frame`);
     if (panelEl) {
       panelEl.setAttribute("data-theme", normalizedTheme);
@@ -2893,6 +2899,8 @@ ${lockedSkillsJson}
 
   // 清理/卸载功能
   const cleanup = () => {
+    if (disposed) return;
+    disposed = true;
     const { $ } = getCore();
     log.info("开始清理...");
 
@@ -2911,7 +2919,7 @@ ${lockedSkillsJson}
     _cleanupRefs.docEvents.length = 0;
 
     // 移除 jQuery 委托事件
-    try { $(document).off('mouseenter', `#${SCRIPT_ID}-panel .buff-icon-item`); } catch (e) { }
+    try { $(getPanelDocument()).off('mouseenter.rpgStatusBar', `#${SCRIPT_ID}-panel .buff-icon-item`); } catch (e) { }
 
     // 取消 mvu_data_updated 事件监听
     if (typeof _cleanupRefs.eventSourceOff === 'function') {
@@ -2925,8 +2933,11 @@ ${lockedSkillsJson}
     $(`#${SCRIPT_ID}-styles`).remove();
 
     // 清理全局引用
-    const globalKeys = ["_cleanup", "_showPopup", "_SkillIcons", "_GameIcons", "_fetchData", "_refresh", "_setState", "_openTab"];
-    globalKeys.forEach(k => { delete window[SCRIPT_ID + k]; });
+    for (const [key, value] of hostApi) {
+      if (mountedWindow && mountedWindow[key] === value) delete mountedWindow[key];
+      if (window[key] === value) delete window[key];
+    }
+    hostApi.clear();
 
     // 重置标记位
     _cleanupRefs.setStateWrapped = false;
@@ -8167,7 +8178,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
   window[SCRIPT_ID + "_refresh"] = () => refreshStatusBar();
   window[SCRIPT_ID + "_setTheme"] = (theme) => applyPanelTheme(theme);
   window[SCRIPT_ID + "_setAppearance"] = (appearance = {}) => {
-    const panelEl = document.getElementById(`${SCRIPT_ID}-panel`);
+    const panelEl = getPanelDocument().getElementById(`${SCRIPT_ID}-panel`);
     const appFrameEl = panelEl?.querySelector(`#${SCRIPT_ID}-app-frame`);
     const brightness = Number.isFinite(Number(appearance.brightness)) ? Number(appearance.brightness) : 1;
     const saturation = Number.isFinite(Number(appearance.saturation)) ? Number(appearance.saturation) : 1;
@@ -15146,15 +15157,18 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
   };
 
   const init = () => {
+    if (disposed) return;
     const { $ } = getCore();
     if (!$) {
       log.error("jQuery 未找到，等待重试...");
       setTimeout(init, 500);
       return;
     }
+    mountedWindow = getPanelDocument().defaultView || window;
     if ($(`#${SCRIPT_ID}-toggle`).length) {
       log.info("Detected an existing status bar instance; reinitializing");
       try {
+        const previousCleanup = mountedWindow === window ? previousScriptCleanup : mountedWindow[SCRIPT_ID + "_cleanup"];
         if (typeof previousCleanup === "function") previousCleanup();
       } catch (error) {
         log.warn("Failed to clean old status bar DOM:", error);
@@ -15678,7 +15692,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     };
 
     // Tooltip 智能定位
-    $(document).on('mouseenter', `#${SCRIPT_ID}-panel .buff-icon-item`, function () {
+    $(getPanelDocument()).on('mouseenter.rpgStatusBar', `#${SCRIPT_ID}-panel .buff-icon-item`, function () {
       const $this = $(this);
       const $panel = $this.closest(`#${SCRIPT_ID}-app-frame`);
 
@@ -15971,7 +15985,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
       if (!success) return;
 
       showToast('success', nextMode === 'new' ? '已切换为新版战斗数值' : '已切换为经典战斗数值');
-      setTimeout(refreshStatusBar, 120);
+      setTimeout(() => { if (!disposed) refreshStatusBar(); }, 120);
     });
 
     // ========== 技能系统模式切换 ==========
@@ -16894,7 +16908,7 @@ ultimate = 显示终结组</pre>
           }
           refreshStatusBar();
           // 打开瞬间再补刷一次，降低与上游写入时序竞争导致的旧帧概率
-          setTimeout(refreshStatusBar, 120);
+          setTimeout(() => { if (!disposed) refreshStatusBar(); }, 120);
         }
       };
     }
@@ -16919,7 +16933,7 @@ ultimate = 显示终结组</pre>
               }
               loadHeaderBackground();
               refreshStatusBar();
-              setTimeout(refreshStatusBar, 120);
+              setTimeout(() => { if (!disposed) refreshStatusBar(); }, 120);
             }
           }
         });
@@ -16932,6 +16946,7 @@ ultimate = 显示终结组</pre>
     let initRetries = 0;
     const maxInitRetries = 15; // 最多重试15次，覆盖约8秒
     const tryInitialLoad = () => {
+      if (disposed) return;
       refreshStatusBar();
       const data = fetchLatestMvuData();
       const hasData = data?.人物 && Object.keys(data.人物).length > 0;
@@ -16989,6 +17004,13 @@ ultimate = 显示终结组</pre>
 
     // 标记全局变量供依赖检测（挂到父窗口，跨iframe可见）
     try { (window.parent || window).__状态栏_loaded__ = true; } catch (e) { window.__状态栏_loaded__ = true; }
+
+    // 底栏从父窗口调用接口，脚本自身仍可从原来的 window 访问。
+    for (const suffix of ["_cleanup", "_showPopup", "_SkillIcons", "_GameIcons", "_fetchData", "_refresh", "_setTheme", "_setAppearance", "_setState", "_openTab"]) {
+      const key = SCRIPT_ID + suffix;
+      hostApi.set(key, window[key]);
+      mountedWindow[key] = window[key];
+    }
 
     showScriptLoadNotice("success", "[RPG status bar] script loaded");
   };
