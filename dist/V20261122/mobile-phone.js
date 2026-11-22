@@ -212,12 +212,25 @@ body #mobile-trigger-btn.tablet-mode {
     display: none;
     align-items: center;
     justify-content: center;
-    animation: fadeIn 0.3s;
+    animation: dnfPhoneFadeIn 0.3s;
     transition: background 0.3s ease, backdrop-filter 0.3s ease;
 }
 
 #mobile-phone-overlay.active {
     display: flex;
+}
+
+/* 手机和触屏平板跟随实际可见区域，包含地址栏、软键盘和安全区变化。 */
+#mobile-phone-overlay[data-fit-viewport] {
+    top: var(--dnf-phone-viewport-top, 0px);
+    left: var(--dnf-phone-viewport-left, 0px);
+    width: var(--dnf-phone-viewport-width, 100%);
+    height: var(--dnf-phone-viewport-height, 100%);
+    box-sizing: border-box;
+    padding: 8px;
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+             max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    overflow: hidden;
 }
 
 /* 置顶时：遮罩透明且不阻挡点击 */
@@ -232,7 +245,7 @@ body #mobile-trigger-btn.tablet-mode {
     pointer-events: auto;
 }
 
-@keyframes fadeIn {
+@keyframes dnfPhoneFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
 }
@@ -248,7 +261,7 @@ body #mobile-trigger-btn.tablet-mode {
     padding: 8px !important;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
     overflow: hidden !important;
-    animation: slideUp 0.3s !important;
+    animation: dnfPhoneSlideUp 0.3s !important;
 }
 
 /* 清除手机框架的伪元素 */
@@ -258,7 +271,7 @@ body #mobile-trigger-btn.tablet-mode {
     display: none !important;
 }
 
-@keyframes slideUp {
+@keyframes dnfPhoneSlideUp {
     from { transform: translateY(50px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
@@ -279,7 +292,7 @@ body #mobile-trigger-btn.tablet-mode {
 }
 
 /* ==================== 状态栏 ==================== */
-.mobile-status-bar {
+#mobile-phone-overlay .mobile-status-bar {
     height: 44px;
     display: flex;
     align-items: center;
@@ -292,18 +305,18 @@ body #mobile-trigger-btn.tablet-mode {
     flex-shrink: 0;
 }
 
-.status-left {
+#mobile-phone-overlay .status-left {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.status-left .time {
+#mobile-phone-overlay .status-left .time {
     color: #1a1a1a;
     font-weight: 700;
 }
 
-.pin-btn {
+#mobile-phone-overlay .pin-btn {
     background: transparent;
     border: none;
     color: #666;
@@ -317,28 +330,28 @@ body #mobile-trigger-btn.tablet-mode {
     border-radius: 6px;
 }
 
-.pin-btn:hover {
+#mobile-phone-overlay .pin-btn:hover {
     background: rgba(0, 0, 0, 0.05);
     color: #333;
 }
 
-.pin-btn.pinned {
+#mobile-phone-overlay .pin-btn.pinned {
     color: #3B82F6;
     transform: rotate(45deg);
 }
 
-.pin-btn.pinned:hover {
+#mobile-phone-overlay .pin-btn.pinned:hover {
     background: rgba(59, 130, 246, 0.1);
 }
 
-.status-center {
+#mobile-phone-overlay .status-center {
     flex: 1;
     display: flex;
     justify-content: center;
     user-select: none;
 }
 
-.dynamic-island {
+#mobile-phone-overlay .dynamic-island {
     width: 126px;
     height: 30px;
     background: #1a1a1a;
@@ -347,7 +360,7 @@ body #mobile-trigger-btn.tablet-mode {
     overflow: hidden;
 }
 
-.dynamic-island::before {
+#mobile-phone-overlay .dynamic-island::before {
     content: '';
     position: absolute;
     top: 50%;
@@ -357,21 +370,21 @@ body #mobile-trigger-btn.tablet-mode {
     height: 6px;
     background: #00ff00;
     border-radius: 50%;
-    animation: pulse 2s infinite;
+    animation: dnfPhoneBatteryPulse 2s infinite;
 }
 
-@keyframes pulse {
+@keyframes dnfPhoneBatteryPulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
 }
 
-.status-right {
+#mobile-phone-overlay .status-right {
     display: flex;
     align-items: center;
     gap: 5px;
 }
 
-.battery {
+#mobile-phone-overlay .battery {
     display: flex;
     align-items: center;
     gap: 2px;
@@ -380,7 +393,7 @@ body #mobile-trigger-btn.tablet-mode {
 }
 
 /* ==================== 主内容区域 ==================== */
-.mobile-content {
+#mobile-phone-overlay .mobile-content {
     flex: 1;
     position: relative;
     overflow: hidden;
@@ -399,7 +412,7 @@ body #mobile-trigger-btn.tablet-mode {
 }
 
 /* ==================== 时间天气卡片 ==================== */
-.weather-card {
+#mobile-phone-overlay .weather-card {
     /* 完全透明，但保留占位空间 */
     background: transparent;
     backdrop-filter: none;
@@ -417,18 +430,18 @@ body #mobile-trigger-btn.tablet-mode {
 }
 
 /* 隐藏卡片内容但保留占位 */
-.weather-card * {
+#mobile-phone-overlay .weather-card * {
     visibility: hidden;
 }
 
-.weather-time {
+#mobile-phone-overlay .weather-time {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 5px;
 }
 
-.current-date {
+#mobile-phone-overlay .current-date {
     font-size: 20px;
     color: #2d3748;
     font-weight: 400;
@@ -440,7 +453,7 @@ body #mobile-trigger-btn.tablet-mode {
         0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.current-time {
+#mobile-phone-overlay .current-time {
     color: #1a1a1a;
     font-size: 48px;
     font-weight: 400;
@@ -454,7 +467,7 @@ body #mobile-trigger-btn.tablet-mode {
         0 6px 12px rgba(0, 0, 0, 0.3);
 }
 
-.weather-info {
+#mobile-phone-overlay .weather-info {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -468,7 +481,7 @@ body #mobile-trigger-btn.tablet-mode {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.weather-desc {
+#mobile-phone-overlay .weather-desc {
     font-size: 14px;
     color: #2d3748;
     font-weight: 400;
@@ -737,14 +750,14 @@ body #mobile-trigger-btn.tablet-mode {
     z-index: 100 !important;
     display: none;
     flex-direction: column;
-    animation: slideIn 0.3s;
+    animation: dnfPhoneSlideIn 0.3s;
 }
 
 #mobile-phone-overlay .app-detail-panel.active {
     display: flex;
 }
 
-@keyframes slideIn {
+@keyframes dnfPhoneSlideIn {
     from { transform: translateX(100%); }
     to { transform: translateX(0); }
 }
@@ -825,27 +838,27 @@ body #mobile-trigger-btn.tablet-mode {
 }
 
 /* 好友列表项 hover 效果 */
-.friend-item:hover {
+#mobile-phone-overlay .friend-item:hover {
     background: #fef3f2 !important;
     box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15) !important;
     transform: translateY(-1px);
 }
 
 /* 论坛帖子项 hover 效果 */
-.forum-post-item:hover {
+#mobile-phone-overlay .forum-post-item:hover {
     transform: translateY(-2px) !important;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12) !important;
 }
 
-.forum-post-item:active {
+#mobile-phone-overlay .forum-post-item:active {
     transform: translateY(0) !important;
 }
 
-.friend-item:active {
+#mobile-phone-overlay .friend-item:active {
     transform: translateY(0);
 }
 
-.empty-message {
+#mobile-phone-overlay .empty-message {
     text-align: center;
     padding: 40px 20px;
     color: #9ca3af;
@@ -853,7 +866,7 @@ body #mobile-trigger-btn.tablet-mode {
 }
 
 /* ==================== 聊天界面样式 ==================== */
-.chat-panel {
+#mobile-phone-overlay .chat-panel {
     position: absolute;
     top: 0;
     left: 0;
@@ -863,14 +876,14 @@ body #mobile-trigger-btn.tablet-mode {
     z-index: 200 !important;
     display: none;
     flex-direction: column;
-    animation: slideIn 0.3s;
+    animation: dnfPhoneSlideIn 0.3s;
 }
 
-.chat-panel.active {
+#mobile-phone-overlay .chat-panel.active {
     display: flex;
 }
 
-.chat-header {
+#mobile-phone-overlay .chat-header {
     height: 50px;
     display: flex;
     align-items: center;
@@ -881,58 +894,58 @@ body #mobile-trigger-btn.tablet-mode {
     flex-shrink: 0;
 }
 
-.chat-messages {
+#mobile-phone-overlay .chat-messages {
     flex: 1;
     overflow-y: auto;
     padding: 15px;
     background: #f8f9fa;
 }
 
-.message-item {
+#mobile-phone-overlay .message-item {
     margin-bottom: 15px;
     display: flex;
 }
 
-.message-item.mine {
+#mobile-phone-overlay .message-item.mine {
     justify-content: flex-end;
 }
 
-.message-item.other {
+#mobile-phone-overlay .message-item.other {
     justify-content: flex-start;
 }
 
-.message-bubble {
+#mobile-phone-overlay .message-bubble {
     max-width: 70%;
     padding: 10px 15px;
     border-radius: 15px;
     word-wrap: break-word;
 }
 
-.message-item.mine .message-bubble {
+#mobile-phone-overlay .message-item.mine .message-bubble {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
 }
 
-.message-item.other .message-bubble {
+#mobile-phone-overlay .message-item.other .message-bubble {
     background: white;
     color: #2d3748;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.message-sender {
+#mobile-phone-overlay .message-sender {
     font-size: 11px;
     color: #9ca3af;
     margin-bottom: 3px;
 }
 
-.message-time {
+#mobile-phone-overlay .message-time {
     font-size: 10px;
     opacity: 0.8;
     margin-top: 5px;
     color: inherit;
 }
 
-.chat-input-area {
+#mobile-phone-overlay .chat-input-area {
     height: 60px;
     background: white;
     border-top: 1px solid rgba(0, 0, 0, 0.1);
@@ -943,7 +956,7 @@ body #mobile-trigger-btn.tablet-mode {
     flex-shrink: 0;
 }
 
-.chat-input {
+#mobile-phone-overlay .chat-input {
     flex: 1;
     height: 40px;
     border: 1px solid #ddd;
@@ -956,17 +969,17 @@ body #mobile-trigger-btn.tablet-mode {
     color: #1f2937;
 }
 
-.chat-input:focus {
+#mobile-phone-overlay .chat-input:focus {
     border-color: #667eea;
     background: #ffffff;
 }
 
-.chat-input::placeholder {
+#mobile-phone-overlay .chat-input::placeholder {
     color: #9ca3af;
     opacity: 1;
 }
 
-.chat-send-btn {
+#mobile-phone-overlay .chat-send-btn {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -982,16 +995,16 @@ body #mobile-trigger-btn.tablet-mode {
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.chat-send-btn:hover:not(:disabled) {
+#mobile-phone-overlay .chat-send-btn:hover:not(:disabled) {
     transform: scale(1.1);
 }
 
-.chat-send-btn:active:not(:disabled) {
+#mobile-phone-overlay .chat-send-btn:active:not(:disabled) {
     transform: scale(0.95);
 }
 
 /*  发送中状态 - 变暗、变矩形 */
-.chat-send-btn:disabled {
+#mobile-phone-overlay .chat-send-btn:disabled {
     cursor: not-allowed;
     opacity: 0.6 !important;
     background: #6c757d !important; /* 灰色背景 */
@@ -1001,21 +1014,21 @@ body #mobile-trigger-btn.tablet-mode {
 }
 
 /* 发送中状态的矩形图标动画 */
-.chat-send-btn .fa-stop {
-    animation: pulse 1s ease-in-out infinite;
+#mobile-phone-overlay .chat-send-btn .fa-stop {
+    animation: dnfPhoneSendPulse 1s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes dnfPhoneSendPulse {
     0%, 100% { opacity: 0.6; }
     50% { opacity: 1; }
 }
 
 /* ==================== 设置页面样式 ==================== */
-.settings-section {
+#mobile-phone-overlay .settings-section {
     margin-bottom: 20px;
 }
 
-.settings-section-title {
+#mobile-phone-overlay .settings-section-title {
     font-size: 14px;
     font-weight: 600;
     color: #2d3748;
@@ -1023,13 +1036,13 @@ body #mobile-trigger-btn.tablet-mode {
     padding-left: 5px;
 }
 
-.wallpaper-categories {
+#mobile-phone-overlay .wallpaper-categories {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.wallpaper-category {
+#mobile-phone-overlay .wallpaper-category {
     background: #fff;
     border-radius: 12px;
     padding: 15px;
@@ -1038,29 +1051,29 @@ body #mobile-trigger-btn.tablet-mode {
     transition: all 0.2s ease;
 }
 
-.wallpaper-category:hover {
+#mobile-phone-overlay .wallpaper-category:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
-.wallpaper-category-header {
+#mobile-phone-overlay .wallpaper-category-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.wallpaper-category-name {
+#mobile-phone-overlay .wallpaper-category-name {
     font-size: 15px;
     font-weight: 600;
     color: #2d3748;
 }
 
-.wallpaper-category-count {
+#mobile-phone-overlay .wallpaper-category-count {
     font-size: 12px;
     color: #9ca3af;
 }
 
-.wallpaper-grid {
+#mobile-phone-overlay .wallpaper-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
@@ -1068,11 +1081,11 @@ body #mobile-trigger-btn.tablet-mode {
     display: none;
 }
 
-.wallpaper-grid.active {
+#mobile-phone-overlay .wallpaper-grid.active {
     display: grid;
 }
 
-.wallpaper-item {
+#mobile-phone-overlay .wallpaper-item {
     aspect-ratio: 9/16;
     border-radius: 8px;
     overflow: hidden;
@@ -1082,18 +1095,18 @@ body #mobile-trigger-btn.tablet-mode {
     transition: all 0.2s ease;
 }
 
-.wallpaper-item:hover {
+#mobile-phone-overlay .wallpaper-item:hover {
     transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.wallpaper-item img {
+#mobile-phone-overlay .wallpaper-item img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.wallpaper-item.selected::after {
+#mobile-phone-overlay .wallpaper-item.selected::after {
     content: '✓';
     position: absolute;
     top: 5px;
@@ -1110,25 +1123,25 @@ body #mobile-trigger-btn.tablet-mode {
     font-weight: bold;
 }
 
-.wallpaper-loading {
+#mobile-phone-overlay .wallpaper-loading {
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
 }
 
-.wallpaper-loading::after {
+#mobile-phone-overlay .wallpaper-loading::after {
     content: '';
     width: 24px;
     height: 24px;
     border: 3px solid #f3f4f6;
     border-top-color: #667eea;
     border-radius: 50%;
-    animation: spin 0.6s linear infinite;
+    animation: dnfPhoneSpin 0.6s linear infinite;
     z-index: 10;
 }
 
-@keyframes spin {
+@keyframes dnfPhoneSpin {
     to { transform: rotate(360deg); }
 }
 
@@ -1144,7 +1157,7 @@ body #mobile-trigger-btn.tablet-mode {
     border: 4px solid rgba(91, 164, 229, 0.2);
     border-top-color: #5BA4E5;
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+    animation: dnfPhoneSpin 0.8s linear infinite;
     z-index: 10;
 }
 
@@ -1163,7 +1176,7 @@ body #mobile-trigger-btn.tablet-mode {
     box-sizing: border-box;
     z-index: 100000;
     opacity: 0;
-    animation: fadeIn 0.2s ease-out forwards;
+    animation: dnfPhoneFadeIn 0.2s ease-out forwards;
 }
 
 .custom-confirm-modal {
@@ -1174,7 +1187,7 @@ body #mobile-trigger-btn.tablet-mode {
     min-width: 0;
     max-width: 480px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-    animation: slideUp 0.3s ease-out;
+    animation: dnfPhoneSlideUp 0.3s ease-out;
 }
 
 .custom-confirm-content {
@@ -1183,7 +1196,7 @@ body #mobile-trigger-btn.tablet-mode {
     padding: 28px 24px 20px;
 }
 
-.confirm-icon {
+.custom-confirm-overlay .confirm-icon {
     width: 64px;
     height: 64px;
     margin: 0 auto 20px;
@@ -1193,15 +1206,15 @@ body #mobile-trigger-btn.tablet-mode {
     align-items: center;
     justify-content: center;
     font-size: 32px;
-    animation: iconPulse 2s ease-in-out infinite;
+    animation: dnfPhoneIconPulse 2s ease-in-out infinite;
 }
 
-@keyframes iconPulse {
+@keyframes dnfPhoneIconPulse {
     0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); }
     50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(102, 126, 234, 0); }
 }
 
-.confirm-title {
+.custom-confirm-overlay .confirm-title {
     font-size: 22px;
     font-weight: 700;
     margin-bottom: 16px;
@@ -1210,7 +1223,7 @@ body #mobile-trigger-btn.tablet-mode {
     letter-spacing: 0.5px;
 }
 
-.confirm-message {
+.custom-confirm-overlay .confirm-message {
     font-size: 15px;
     line-height: 1.7;
     color: #d1d5db;
@@ -1219,7 +1232,7 @@ body #mobile-trigger-btn.tablet-mode {
     white-space: pre-line;
 }
 
-.confirm-item-info {
+.custom-confirm-overlay .confirm-item-info {
     background: rgba(102, 126, 234, 0.1);
     border: 1px solid rgba(102, 126, 234, 0.3);
     border-radius: 12px;
@@ -1227,7 +1240,7 @@ body #mobile-trigger-btn.tablet-mode {
     margin-bottom: 24px;
 }
 
-.confirm-item-name {
+.custom-confirm-overlay .confirm-item-name {
     font-size: 18px;
     font-weight: 600;
     color: #a5b4fc;
@@ -1237,14 +1250,14 @@ body #mobile-trigger-btn.tablet-mode {
     gap: 8px;
 }
 
-.confirm-item-desc {
+.custom-confirm-overlay .confirm-item-desc {
     font-size: 13px;
     color: #9ca3af;
     margin-bottom: 12px;
     line-height: 1.6;
 }
 
-.confirm-item-price {
+.custom-confirm-overlay .confirm-item-price {
     font-size: 16px;
     font-weight: 600;
     color: #fbbf24;
@@ -1253,12 +1266,12 @@ body #mobile-trigger-btn.tablet-mode {
     gap: 6px;
 }
 
-.confirm-buttons {
+.custom-confirm-overlay .confirm-buttons {
     display: flex;
     gap: 12px;
 }
 
-.confirm-btn {
+.custom-confirm-overlay .confirm-btn {
     flex: 1;
     padding: 14px 20px;
     border: none;
@@ -1271,28 +1284,28 @@ body #mobile-trigger-btn.tablet-mode {
     letter-spacing: 0.5px;
 }
 
-.confirm-btn-cancel {
+.custom-confirm-overlay .confirm-btn-cancel {
     background: #374151;
     color: #d1d5db;
 }
 
-.confirm-btn-cancel:hover {
+.custom-confirm-overlay .confirm-btn-cancel:hover {
     background: #4b5563;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.confirm-btn-confirm {
+.custom-confirm-overlay .confirm-btn-confirm {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
 }
 
-.confirm-btn-confirm:hover {
+.custom-confirm-overlay .confirm-btn-confirm:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
 }
 
-.confirm-btn:active {
+.custom-confirm-overlay .confirm-btn:active {
     transform: translateY(0) scale(0.98);
 }
 
@@ -1300,7 +1313,6 @@ body #mobile-trigger-btn.tablet-mode {
 
 /* 平板端适配 (≤768px) */
 @media (max-width: 768px) {
-    .mobile-phone-frame,
     #mobile-phone-overlay .mobile-phone-frame {
         width: 80% !important;
         max-width: 320px !important;
@@ -1445,7 +1457,6 @@ body #mobile-trigger-btn.tablet-mode {
 
 /* 大屏手机适配 (≤480px) */
 @media (max-width: 480px) {
-    .mobile-phone-frame,
     #mobile-phone-overlay .mobile-phone-frame {
         width: 90% !important;
         max-width: 100% !important;
@@ -1638,11 +1649,11 @@ body #mobile-trigger-btn.tablet-mode {
         padding: 20px 16px 16px;
     }
 
-    .confirm-title {
+    .custom-confirm-overlay .confirm-title {
         font-size: 18px;
     }
 
-    .confirm-btn {
+    .custom-confirm-overlay .confirm-btn {
         padding: 12px 14px;
         font-size: 14px;
     }
@@ -1650,7 +1661,6 @@ body #mobile-trigger-btn.tablet-mode {
 
 /* 小屏手机适配 (≤360px) */
 @media (max-width: 360px) {
-    .mobile-phone-frame,
     #mobile-phone-overlay .mobile-phone-frame {
         width: 95% !important;
         border-radius: 25px !important;
@@ -1779,8 +1789,7 @@ body #mobile-trigger-btn.tablet-mode {
 }
 
 /* 横屏优化 */
-@media (max-width: 768px) and (orientation: landscape) {
-    .mobile-phone-frame,
+@media (max-width: 768px) and (orientation: landscape), (pointer: coarse) and (orientation: landscape) {
     #mobile-phone-overlay .mobile-phone-frame {
         width: 50% !important;
         max-width: 500px !important;
@@ -1797,29 +1806,29 @@ body #mobile-trigger-btn.tablet-mode {
 }
 
 /* ==================== 滚动条 ==================== */
-.home-screen::-webkit-scrollbar,
-.app-body::-webkit-scrollbar {
+#mobile-phone-overlay .home-screen::-webkit-scrollbar,
+#mobile-phone-overlay .app-body::-webkit-scrollbar {
     width: 4px;
 }
 
-.home-screen::-webkit-scrollbar-track,
-.app-body::-webkit-scrollbar-track {
+#mobile-phone-overlay .home-screen::-webkit-scrollbar-track,
+#mobile-phone-overlay .app-body::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.05);
 }
 
-.home-screen::-webkit-scrollbar-thumb,
-.app-body::-webkit-scrollbar-thumb {
+#mobile-phone-overlay .home-screen::-webkit-scrollbar-thumb,
+#mobile-phone-overlay .app-body::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.2);
     border-radius: 2px;
 }
 
-.home-screen::-webkit-scrollbar-thumb:hover,
-.app-body::-webkit-scrollbar-thumb:hover {
+#mobile-phone-overlay .home-screen::-webkit-scrollbar-thumb:hover,
+#mobile-phone-overlay .app-body::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.3);
 }
 
 /* ==================== 全屏壁纸按钮 ==================== */
-.wallpaper-fullscreen-btn {
+#mobile-phone-overlay .wallpaper-fullscreen-btn {
     position: absolute;
     bottom: 20px;
     right: 20px;
@@ -1838,23 +1847,23 @@ body #mobile-trigger-btn.tablet-mode {
     z-index: 50;
 }
 
-.wallpaper-fullscreen-btn i {
+#mobile-phone-overlay .wallpaper-fullscreen-btn i {
     font-size: 20px;
     color: #667eea;
 }
 
-.wallpaper-fullscreen-btn:hover {
+#mobile-phone-overlay .wallpaper-fullscreen-btn:hover {
     transform: scale(1.1);
     box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
     background: rgba(255, 255, 255, 1);
 }
 
-.wallpaper-fullscreen-btn:active {
+#mobile-phone-overlay .wallpaper-fullscreen-btn:active {
     transform: scale(0.95);
 }
 
 /* ==================== 全屏壁纸查看器 ==================== */
-.wallpaper-fullscreen-viewer {
+#mobile-phone-overlay .wallpaper-fullscreen-viewer {
     position: absolute;
     top: 0;
     left: 0;
@@ -1866,14 +1875,14 @@ body #mobile-trigger-btn.tablet-mode {
     align-items: center;
     justify-content: center;
     z-index: 200;
-    animation: fadeIn 0.3s;
+    animation: dnfPhoneFadeIn 0.3s;
 }
 
-.wallpaper-fullscreen-viewer.active {
+#mobile-phone-overlay .wallpaper-fullscreen-viewer.active {
     display: flex;
 }
 
-.wallpaper-fullscreen-viewer img {
+#mobile-phone-overlay .wallpaper-fullscreen-viewer img {
     max-width: 100%;
     max-height: calc(100% - 100px);
     object-fit: contain;
@@ -1881,7 +1890,7 @@ body #mobile-trigger-btn.tablet-mode {
     box-shadow: none;
 }
 
-.wallpaper-close-btn {
+#mobile-phone-overlay .wallpaper-close-btn {
     position: absolute;
     top: 10px;
     right: 10px;
@@ -1899,17 +1908,17 @@ body #mobile-trigger-btn.tablet-mode {
     z-index: 201;
 }
 
-.wallpaper-close-btn i {
+#mobile-phone-overlay .wallpaper-close-btn i {
     font-size: 20px;
     color: #ffffff;
 }
 
-.wallpaper-close-btn:hover {
+#mobile-phone-overlay .wallpaper-close-btn:hover {
     background: rgba(255, 255, 255, 0.3);
     transform: rotate(90deg);
 }
 
-.wallpaper-close-btn:active {
+#mobile-phone-overlay .wallpaper-close-btn:active {
     transform: rotate(90deg) scale(0.9);
 }
 
@@ -1950,6 +1959,20 @@ body #mobile-trigger-btn.tablet-mode {
     max-width: min(94vw, 600px) !important;
     max-height: calc(100vh - 36px) !important;
     aspect-ratio: auto !important;
+}
+#mobile-phone-overlay[data-fit-viewport] .mobile-phone-frame {
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+}
+#mobile-phone-overlay[data-fit-viewport] .mobile-phone-frame[data-custom-sized="true"] {
+    max-width: 100% !important;
+}
+@supports not (aspect-ratio: 1 / 1) {
+    #mobile-phone-overlay[data-fit-viewport] .mobile-phone-frame:not([data-custom-sized]) {
+        height: 737px !important;
+    }
 }
 #mobile-phone-overlay .mobile-phone-screen {
     border-radius: 32px !important;
@@ -4257,8 +4280,7 @@ function bindPhoneEvents() {
     $(document).on('click', function (e) {
         const $target = $(e.target);
 
-        const inMobilePhone = $target.closest('.mobile-phone-frame').length > 0 ||
-            $target.closest('#mobile-phone-overlay').length > 0;
+        const inMobilePhone = $target.closest('#mobile-phone-overlay').length > 0;
 
         if (inMobilePhone) {
             const inAppBody = $target.closest('#phone-app-body').length > 0;
@@ -4383,20 +4405,6 @@ function bindPhoneEvents() {
                 // 桌面端保持用户拖动的位置
             }
 
-            // 同时检查手机界面是否超出边界
-            const $phoneFrame = $('.mobile-phone-frame');
-            if ($phoneFrame.length > 0 && $('#mobile-phone-overlay').hasClass('active')) {
-                const phoneRect = $phoneFrame[0].getBoundingClientRect();
-                const frameWidth = $phoneFrame.outerWidth() || 375;
-                const frameHeight = $phoneFrame.outerHeight() || 737;
-
-                // 如果手机界面超出边界，重置到中心
-                if (phoneRect.left < -frameWidth + 50 || phoneRect.top < -frameHeight + 50 ||
-                    phoneRect.right > viewport.width + frameWidth - 50 ||
-                    phoneRect.bottom > viewport.height + frameHeight - 50) {
-                    $phoneFrame.css('transform', 'translate(0, 0)');
-                }
-            }
         }, 250); // 防抖250ms
     });
 }
@@ -5123,8 +5131,46 @@ function updatePhoneData(data) {
 }
 
 // ==================== 控制函数 ====================
+const phoneViewportMedia = window.matchMedia('(max-width: 768px), (hover: none) and (pointer: coarse)');
+
+function syncPhoneViewport() {
+    const overlay = document.getElementById('mobile-phone-overlay');
+    if (!overlay?.classList.contains('active')) return;
+
+    const fitsViewport = phoneViewportMedia.matches;
+    overlay.toggleAttribute('data-fit-viewport', fitsViewport);
+    if (fitsViewport) {
+        const visualViewport = window.visualViewport;
+        const viewport = visualViewport?.width > 0 && visualViewport.height > 0 ? visualViewport : null;
+        const { width, height } = getViewportSize();
+        overlay.style.setProperty('--dnf-phone-viewport-width', `${width}px`);
+        overlay.style.setProperty('--dnf-phone-viewport-height', `${height}px`);
+        overlay.style.setProperty('--dnf-phone-viewport-left', `${viewport?.offsetLeft || 0}px`);
+        overlay.style.setProperty('--dnf-phone-viewport-top', `${viewport?.offsetTop || 0}px`);
+    }
+
+    // 横竖屏切换或键盘弹起后，曾拖动的手机可能已完全离开可见区域。
+    const frame = overlay.querySelector('.mobile-phone-frame');
+    const rect = frame.getBoundingClientRect();
+    const bounds = overlay.getBoundingClientRect();
+    if (rect.right < bounds.left + 50 || rect.left > bounds.right - 50 ||
+        rect.bottom < bounds.top + 50 || rect.top > bounds.bottom - 50) {
+        frame.style.removeProperty('transform');
+    }
+}
+
+function removePhoneViewportListeners() {
+    window.removeEventListener('resize', syncPhoneViewport);
+    window.visualViewport?.removeEventListener('resize', syncPhoneViewport);
+    window.visualViewport?.removeEventListener('scroll', syncPhoneViewport);
+}
+
 function openMobilePhone() {
     $('#mobile-phone-overlay').addClass('active');
+    syncPhoneViewport();
+    window.addEventListener('resize', syncPhoneViewport);
+    window.visualViewport?.addEventListener('resize', syncPhoneViewport);
+    window.visualViewport?.addEventListener('scroll', syncPhoneViewport);
 
     //  刷新MVU数据
     try {
@@ -5175,6 +5221,7 @@ function openMobilePhone() {
 }
 
 function closeMobilePhone() {
+    removePhoneViewportListeners();
     const $overlay = $('#mobile-phone-overlay');
     $overlay.removeClass('active');
 
@@ -5223,7 +5270,7 @@ function closeMobilePhone() {
     // closeAppPanel(); // 注释掉这行，保持面板状态
 
     // 重置手机框架位置和动画
-    const $phoneFrame = $('.mobile-phone-frame');
+    const $phoneFrame = $('#mobile-phone-overlay .mobile-phone-frame');
     $phoneFrame.css({
         'transform': '',
         'animation': '',
@@ -5255,7 +5302,7 @@ function togglePin() {
 // 初始化手机界面拖动（复用小按钮的拖动逻辑）
 function initPhoneDrag() {
     const $dragHandle = $('#phone-drag-handle');
-    const $phoneFrame = $('.mobile-phone-frame');
+    const $phoneFrame = $('#mobile-phone-overlay .mobile-phone-frame');
 
     if ($dragHandle.length === 0 || $phoneFrame.length === 0) {
         return;
@@ -5287,7 +5334,7 @@ function handlePhoneDragStart(e) {
     // 捕获指针，确保后续的 pointermove 和 pointerup 事件能够被触发
     e.target.setPointerCapture(e.pointerId);
 
-    const $phoneFrame = $('.mobile-phone-frame');
+    const $phoneFrame = $('#mobile-phone-overlay .mobile-phone-frame');
 
     phoneDragStartX = e.clientX;
     phoneDragStartY = e.clientY;
@@ -5333,36 +5380,29 @@ function handlePhoneDragMove(e) {
     const newX = phoneStartX + deltaX;
     const newY = phoneStartY + deltaY;
 
-    // 获取手机框架和视口信息
-    const $phoneFrame = $('.mobile-phone-frame');
-    const frameRect = $phoneFrame[0].getBoundingClientRect();
-    const frameWidth = frameRect.width || 375;
-    const frameHeight = frameRect.height || 737;
-    const viewport = getViewportSize();
+    const $phoneFrame = $('#mobile-phone-overlay .mobile-phone-frame');
+    const frame = $phoneFrame[0];
+    const overlay = frame.closest('#mobile-phone-overlay');
+    const bounds = overlay.getBoundingClientRect();
+    // offsetLeft/Top 是 flex 居中后的原始位置，包含安全区内边距，不含拖动的 transform。
+    const initialLeft = bounds.left + frame.offsetLeft;
+    const initialTop = bounds.top + frame.offsetTop;
+    const actualLeft = initialLeft + newX;
+    const actualTop = initialTop + newY;
 
-    // 计算手机框架的初始中心位置（无 transform 时的位置）
-    // 手机框架通过 flexbox 居中，所以初始位置是视口中心
-    const initialCenterX = viewport.width / 2;
-    const initialCenterY = viewport.height / 2;
-
-    // 计算应用 transform 后的实际位置
-    const actualLeft = initialCenterX - frameWidth / 2 + newX;
-    const actualTop = initialCenterY - frameHeight / 2 + newY;
-
-    // 边界限制：确保至少有 minVisible 像素在屏幕内
     const minVisible = 80;
-    const minX = -frameWidth + minVisible;
-    const maxX = viewport.width - minVisible;
-    const minY = -frameHeight + minVisible;
-    const maxY = viewport.height - minVisible;
+    const minX = bounds.left - frame.offsetWidth + minVisible;
+    const maxX = bounds.right - minVisible;
+    const minY = bounds.top - frame.offsetHeight + minVisible;
+    const maxY = bounds.bottom - minVisible;
 
     // 限制实际位置
     const boundedLeft = clamp(actualLeft, minX, maxX);
     const boundedTop = clamp(actualTop, minY, maxY);
 
     // 反算回 transform 值
-    const boundedTransformX = boundedLeft - (initialCenterX - frameWidth / 2);
-    const boundedTransformY = boundedTop - (initialCenterY - frameHeight / 2);
+    const boundedTransformX = boundedLeft - initialLeft;
+    const boundedTransformY = boundedTop - initialTop;
 
     // 应用 transform
     $phoneFrame.css('transform', `translate(${boundedTransformX}px, ${boundedTransformY}px)`);
@@ -10831,6 +10871,7 @@ function switchCGImage(direction) {
 
 // ==================== 清理函数 ====================
 function cleanupMobilePhone() {
+    removePhoneViewportListeners();
     // 移除触发按钮拖动事件监听
     $('#mobile-trigger-btn').off('click');
 
