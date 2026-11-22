@@ -2873,6 +2873,45 @@ ${lockedSkillsJson}
     img.src = HEADER_BG_URL + '?t=' + Date.now();
   };
 
+  const syncStatusPanelViewport = (panel) => {
+    if (!panel) return;
+    const view = panel.ownerDocument.defaultView;
+    const viewport = view.visualViewport;
+    const width = viewport?.width || view.innerWidth;
+    const height = viewport?.height || view.innerHeight;
+    const isPhone = view.matchMedia('(pointer: coarse)').matches && Math.min(view.screen.width, view.screen.height) < 600;
+    const fitViewport = panel.classList.contains('visible') && (width < 600 || isPhone);
+    panel.toggleAttribute('data-fit-viewport', fitViewport);
+
+    if (!fitViewport) {
+      if (panel.hasAttribute('popover')) {
+        panel.hidePopover();
+        panel.removeAttribute('popover');
+      }
+      return;
+    }
+
+    const { style } = panel;
+    const x = viewport?.offsetLeft || 0;
+    const y = viewport?.offsetTop || 0;
+    style.setProperty('--status-viewport-width', `${width}px`);
+    style.setProperty('--status-viewport-height', `${height}px`);
+
+    // 顶层面板不受宿主页面的 transform、裁切和层叠上下文影响。
+    if (typeof panel.showPopover === 'function') {
+      if (!panel.hasAttribute('popover')) panel.setAttribute('popover', 'manual');
+      if (!panel.matches(':popover-open')) panel.showPopover();
+      style.setProperty('--status-viewport-x', `${x}px`);
+      style.setProperty('--status-viewport-y', `${y}px`);
+    } else {
+      style.setProperty('--status-viewport-x', '0px');
+      style.setProperty('--status-viewport-y', '0px');
+      const origin = panel.getBoundingClientRect();
+      style.setProperty('--status-viewport-x', `${x - origin.left}px`);
+      style.setProperty('--status-viewport-y', `${y - origin.top}px`);
+    }
+  };
+
   const state = {
     current: "collapsed",
     setState: (newState) => {
@@ -2881,6 +2920,7 @@ ${lockedSkillsJson}
       if (newState === "expanded") {
         syncPanelTheme();
         panel.addClass("visible");
+        syncStatusPanelViewport(panel[0]);
         state.current = "expanded";
         try {
           refreshStatusBar();
@@ -2891,6 +2931,7 @@ ${lockedSkillsJson}
         loadHeaderBackground();
       } else {
         panel.removeClass("visible");
+        syncStatusPanelViewport(panel[0]);
         state.current = "collapsed";
       }
     },
@@ -9728,6 +9769,19 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
 #${SCRIPT_ID}-panel.visible {
     display: flex;
 }
+#${SCRIPT_ID}-panel[data-fit-viewport] {
+    inset: auto;
+    top: var(--status-viewport-y, 0px);
+    left: var(--status-viewport-x, 0px);
+    width: var(--status-viewport-width, 100vw);
+    height: var(--status-viewport-height, 100vh);
+    box-sizing: border-box;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
 #${SCRIPT_ID}-panel .close-btn {
     position: absolute;
     top: 12px;
@@ -9797,8 +9851,20 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     filter: brightness(var(--status-card-brightness, 1)) saturate(var(--status-card-saturation, 1));
     transition: background-color 0.28s ease, filter 0.28s ease;
 }
+#${SCRIPT_ID}-panel[data-fit-viewport] #${SCRIPT_ID}-app-frame {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+#${SCRIPT_ID}-panel[data-fit-viewport] .close-btn {
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+}
 @media (min-width: 600px) {
-    #${SCRIPT_ID}-panel #${SCRIPT_ID}-app-frame {
+    #${SCRIPT_ID}-panel:not([data-fit-viewport]) #${SCRIPT_ID}-app-frame {
         position: relative;
         top: auto;
         left: auto;
@@ -9810,7 +9876,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
         border-radius: 28px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
     }
-    #${SCRIPT_ID}-panel .close-btn {
+    #${SCRIPT_ID}-panel:not([data-fit-viewport]) .close-btn {
         top: max(14px, calc(50vh - min(420px, 45vh)));
         right: max(14px, calc(50vw - min(210px, 46vw) - 48px));
     }
@@ -15627,6 +15693,15 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
 
     const $btn = $(`#${SCRIPT_ID}-toggle`);
     const $panel = $(`#${SCRIPT_ID}-panel`);
+    const panelView = $panel[0].ownerDocument.defaultView;
+    const syncViewport = () => {
+      if ($panel[0].classList.contains('visible')) syncStatusPanelViewport($panel[0]);
+    };
+    for (const [target, event] of [[panelView, 'resize'], [panelView.visualViewport, 'resize'], [panelView.visualViewport, 'scroll']]) {
+      if (!target) continue;
+      target.addEventListener(event, syncViewport);
+      _cleanupRefs.docEvents.push({ target, event, handler: syncViewport });
+    }
     bindThemeSync();
 
     log.debug("悬浮球初始化检查:");
@@ -16923,6 +16998,7 @@ ultimate = 显示终结组</pre>
           const isVisible = panelEl.classList.contains('visible');
           if (isVisible !== lastVisible) {
             lastVisible = isVisible;
+            syncStatusPanelViewport(panelEl);
             state.current = isVisible ? "expanded" : "collapsed";
             if (isVisible) {
               syncPanelTheme();
