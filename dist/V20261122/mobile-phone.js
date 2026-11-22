@@ -116,18 +116,14 @@ const phoneStyles = `
 /* 使用多层ID选择器提高优先级 */
 #mobile-trigger-btn#mobile-trigger-btn#mobile-trigger-btn.mobile-mode,
 body #mobile-trigger-btn.mobile-mode {
-    /* 移动端模式：右边垂直居中定位，覆盖所有内联样式 */
-    left: auto !important;
-    top: 50% !important;
-    right: 12px !important;
-    bottom: auto !important;
     width: 45px !important;
     height: 45px !important;
     font-size: 22px !important;
     position: fixed !important;
     display: flex !important;
     z-index: 10000 !important;
-    transform: translateY(-50%) !important;
+    transform: none !important;
+    transition-property: background, box-shadow;
     margin: 0 !important;
     background: linear-gradient(135deg, #e3e3e3 0%, #c4c4c4 100%) !important;
     border: 1px solid #d4d4d4 !important;
@@ -152,38 +148,6 @@ body #mobile-trigger-btn.tablet-mode {
     background: linear-gradient(135deg, #e3e3e3 0%, #c4c4c4 100%) !important;
     border: 1px solid #d4d4d4 !important;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 15px rgba(0, 0, 0, 0.03) !important;
-}
-
-/*  CSS媒体查询：作为备用方案（在非iframe环境中生效） */
-@media (max-width: 480px) {
-    #mobile-trigger-btn:not(.desktop-mode) {
-        left: auto !important;
-        top: 50% !important;
-        right: 12px !important;
-        bottom: auto !important;
-        width: 45px !important;
-        height: 45px !important;
-        font-size: 22px !important;
-        transform: translateY(-50%) !important;
-        background: linear-gradient(135deg, #e3e3e3 0%, #c4c4c4 100%) !important;
-        border: 1px solid #d4d4d4 !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 15px rgba(0, 0, 0, 0.03) !important;
-    }
-}
-
-@media (min-width: 481px) and (max-width: 768px) {
-    #mobile-trigger-btn:not(.desktop-mode) {
-        left: auto !important;
-        top: auto !important;
-        right: 15px !important;
-        bottom: 15px !important;
-        width: 50px !important;
-        height: 50px !important;
-        font-size: 24px !important;
-        background: linear-gradient(135deg, #e3e3e3 0%, #c4c4c4 100%) !important;
-        border: 1px solid #d4d4d4 !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 15px rgba(0, 0, 0, 0.03) !important;
-    }
 }
 
 #mobile-trigger-btn:hover {
@@ -3792,6 +3756,7 @@ function initializeMobilePhone() {
 
         $('body').append(triggerBtn);
         $('body').append(phoneOverlay);
+        window.resetMobileButtonPosition();
 
         // 延迟绑定事件，确保 DOM 完全就绪
         setTimeout(() => {
@@ -3806,17 +3771,6 @@ function initializeMobilePhone() {
         // 更新时间
         updatePhoneTime();
         setInterval(updatePhoneTime, 60000);
-
-        //  每次初始化时重置悬浮球位置到初始位置
-        localStorage.removeItem('mobile-trigger-btn-position');
-        localStorage.removeItem('mobile-trigger-btn-user-dragged');
-
-        //  主动调用位置重置，确保在正确的初始位置
-        // 桌面端：离右边三分之一距离的垂直中央
-        // 移动端：右边垂直居中
-        setTimeout(() => {
-            window.resetMobileButtonPosition && window.resetMobileButtonPosition();
-        }, 100);
 
         // 恢复保存的壁纸和手机尺寸
         setTimeout(() => {
@@ -3848,27 +3802,17 @@ function bindPhoneEvents() {
     const onPointerMove = function (e) {
         if (!isDrag) return;
         e.cancelable && e.preventDefault();
-        const dx = e.screenX - pStartX;
-        const dy = e.screenY - pStartY;
+        const dx = e.clientX - pStartX;
+        const dy = e.clientY - pStartY;
         if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
             $triggerBtn.addClass('dragging');
         }
         if ($triggerBtn.hasClass('dragging')) {
             hasMoved = true;
-            // 移除响应式定位类，切换到绝对定位
-            $triggerBtn.removeClass('mobile-mode tablet-mode desktop-mode');
-
-            let newX = pStartLeft + dx;
-            let newY = pStartTop + dy;
-            const btnWidth = $triggerBtn.outerWidth() || 60;
-            const btnHeight = $triggerBtn.outerHeight() || 60;
-            const bounded = constrainFullyInViewport(newX, newY, btnWidth, btnHeight);
-
-            btnElement.style.setProperty('left', bounded.x + 'px', 'important');
-            btnElement.style.setProperty('top', bounded.y + 'px', 'important');
-            btnElement.style.setProperty('right', 'auto', 'important');
-            btnElement.style.setProperty('bottom', 'auto', 'important');
-            btnElement.style.setProperty('transform', 'none', 'important');
+            const rect = btnElement.getBoundingClientRect();
+            const bounds = getTriggerViewport(btnElement);
+            const position = clampTriggerPosition(bounds, rect, pStartLeft + dx, pStartTop + dy);
+            placeTriggerAt(btnElement, position.left, position.top);
         }
     };
 
@@ -3911,8 +3855,8 @@ function bindPhoneEvents() {
         e.stopPropagation();
         isDrag = true;
         hasMoved = false;
-        pStartX = e.screenX;
-        pStartY = e.screenY;
+        pStartX = e.clientX;
+        pStartY = e.clientY;
         const rect = btnElement.getBoundingClientRect();
         pStartLeft = rect.left;
         pStartTop = rect.top;
@@ -4337,62 +4281,29 @@ function bindPhoneEvents() {
         }
     });
 
-    //  窗口resize监听：响应式调整按钮位置，并确保元素不跑出屏幕
-    let resizeTimer;
-    $(getPhoneDocument().defaultView).on('resize.mobilePhone', function () {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () {
-            const viewport = getViewportSize();
-            const $btn = $('#mobile-trigger-btn');
-            const btnElement = $btn[0];
-            if (!btnElement) return;
-
-            //  检查用户是否手动拖动过
-            const userDragged = localStorage.getItem('mobile-trigger-btn-user-dragged') === 'true';
-
-            if (userDragged) {
-                // 用户已手动拖动，检查并修正位置确保不跑出屏幕
-                const rect = btnElement.getBoundingClientRect();
-                const btnWidth = $btn.outerWidth() || 60;
-                const btnHeight = $btn.outerHeight() || 60;
-
-                // 检查是否超出边界
-                if (rect.left < 0 || rect.top < 0 ||
-                    rect.right > viewport.width || rect.bottom > viewport.height) {
-                    // 修正位置
-                    const bounded = constrainFullyInViewport(rect.left, rect.top, btnWidth, btnHeight);
-                    btnElement.style.setProperty('left', bounded.x + 'px', 'important');
-                    btnElement.style.setProperty('top', bounded.y + 'px', 'important');
-                    // 更新保存的位置
-                    localStorage.setItem('mobile-trigger-btn-position', JSON.stringify({ left: bounded.x, top: bounded.y }));
-                }
-                return;
+    const view = btnElement.ownerDocument.defaultView;
+    const syncPosition = () => {
+        if (isDrag) return;
+        if (localStorage.getItem('mobile-trigger-btn-user-dragged') === 'true') {
+            const rect = btnElement.getBoundingClientRect();
+            const position = clampTriggerPosition(getTriggerViewport(btnElement), rect, rect.left, rect.top);
+            if (position.left !== rect.left || position.top !== rect.top) {
+                placeTriggerAt(btnElement, position.left, position.top);
             }
-
-            //  根据屏幕宽度调整CSS类和位置
-            if (viewport.width <= 480) {
-                // 移除内联定位样式
-                btnElement.style.removeProperty('left');
-                btnElement.style.removeProperty('top');
-                btnElement.style.removeProperty('right');
-                btnElement.style.removeProperty('bottom');
-                btnElement.style.removeProperty('transform');
-                // 添加mobile-mode类
-                $btn.removeClass('tablet-mode desktop-mode').addClass('mobile-mode');
-            } else if (viewport.width <= 768) {
-                btnElement.style.removeProperty('left');
-                btnElement.style.removeProperty('top');
-                btnElement.style.removeProperty('right');
-                btnElement.style.removeProperty('bottom');
-                btnElement.style.removeProperty('transform');
-                $btn.removeClass('mobile-mode desktop-mode').addClass('tablet-mode');
-            } else {
-                $btn.removeClass('mobile-mode tablet-mode').addClass('desktop-mode');
-                // 桌面端保持用户拖动的位置
-            }
-
-        }, 250); // 防抖250ms
-    });
+            return;
+        }
+        positionTriggerAtDefault(btnElement);
+    };
+    removeTriggerViewportListeners();
+    view.addEventListener('resize', syncPosition);
+    view.visualViewport?.addEventListener('resize', syncPosition);
+    view.visualViewport?.addEventListener('scroll', syncPosition);
+    removeTriggerViewportListeners = () => {
+        view.removeEventListener('resize', syncPosition);
+        view.visualViewport?.removeEventListener('resize', syncPosition);
+        view.visualViewport?.removeEventListener('scroll', syncPosition);
+    };
+    syncPosition();
 }
 
 // ==================== 拖动处理函数 ====================
@@ -4579,48 +4490,73 @@ function restoreTriggerBtnPosition() {
     }
 }
 
-// ==================== 手动调整按钮位置（调试用） ====================
-window.resetMobileButtonPosition = function () {
-    const { width: windowWidth } = getViewportSize();
-    const $btn = $('#mobile-trigger-btn');
-    const btnElement = $btn[0];
-    if (!btnElement) return;
+// ==================== 悬浮球与宿主可见视口 ====================
+let removeTriggerViewportListeners = () => {};
 
-    //  移除所有内联定位样式
-    btnElement.style.removeProperty('left');
-    btnElement.style.removeProperty('top');
-    btnElement.style.removeProperty('right');
-    btnElement.style.removeProperty('bottom');
+function getTriggerViewport(btn) {
+    const view = btn.ownerDocument.defaultView;
+    const viewport = view.visualViewport;
+    return {
+        ...getViewportSize(view),
+        left: viewport?.offsetLeft || 0,
+        top: viewport?.offsetTop || 0,
+        isPhone: view.matchMedia('(pointer: coarse)').matches && Math.min(view.screen.width, view.screen.height) < 600
+    };
+}
 
-    //  根据屏幕宽度强制设置位置（带!important）
-    if (windowWidth <= 480) {
-        $btn.removeClass('tablet-mode desktop-mode').addClass('mobile-mode');
-        //  强制设置内联样式（带!important），右边垂直居中
-        btnElement.style.setProperty('left', 'auto', 'important');
-        btnElement.style.setProperty('top', '50%', 'important');
-        btnElement.style.setProperty('right', '12px', 'important');
-        btnElement.style.setProperty('bottom', 'auto', 'important');
-        btnElement.style.setProperty('transform', 'translateY(-50%)', 'important');
-    } else if (windowWidth <= 768) {
-        $btn.removeClass('mobile-mode desktop-mode').addClass('tablet-mode');
-        btnElement.style.setProperty('left', 'auto', 'important');
-        btnElement.style.setProperty('top', 'auto', 'important');
-        btnElement.style.setProperty('right', '15px', 'important');
-        btnElement.style.setProperty('bottom', '15px', 'important');
-        btnElement.style.setProperty('transform', 'none', 'important');
-    } else {
-        //  桌面端：离右边三分之一距离的垂直中央
-        $btn.removeClass('mobile-mode tablet-mode').addClass('desktop-mode');
-        btnElement.style.setProperty('left', 'auto', 'important');
-        btnElement.style.setProperty('top', '50%', 'important');
-        btnElement.style.setProperty('right', '20%', 'important');
-        btnElement.style.setProperty('bottom', 'auto', 'important');
-        btnElement.style.setProperty('transform', 'translateY(-50%)', 'important');
+function clampTriggerPosition(bounds, rect, left, top) {
+    return {
+        left: bounds.left + clamp(left - bounds.left, 0, Math.max(0, bounds.width - rect.width)),
+        top: bounds.top + clamp(top - bounds.top, 0, Math.max(0, bounds.height - rect.height))
+    };
+}
+
+function placeTriggerAt(btn, left, top) {
+    // 酒馆的 transform 会改变 fixed 的包含块。用元素自身测出固定定位的实际原点。
+    const { style } = btn;
+    style.setProperty('right', 'auto', 'important');
+    style.setProperty('bottom', 'auto', 'important');
+    style.setProperty('transform', 'none', 'important');
+    style.setProperty('left', '0px', 'important');
+    style.setProperty('top', '0px', 'important');
+    const origin = btn.getBoundingClientRect();
+    const scaleX = origin.width / btn.offsetWidth || 1;
+    const scaleY = origin.height / btn.offsetHeight || 1;
+    style.setProperty('left', `${(left - origin.left) / scaleX}px`, 'important');
+    style.setProperty('top', `${(top - origin.top) / scaleY}px`, 'important');
+}
+
+function positionTriggerAtDefault(btn) {
+    const bounds = getTriggerViewport(btn);
+    const mobile = bounds.width <= 480 || bounds.isPhone;
+    const mode = mobile ? 'mobile-mode' : bounds.width <= 768 ? 'tablet-mode' : 'desktop-mode';
+    btn.classList.remove('mobile-mode', 'tablet-mode', 'desktop-mode');
+    btn.classList.add(mode);
+
+    if (mobile) {
+        const rect = btn.getBoundingClientRect();
+        const position = clampTriggerPosition(bounds, rect,
+            bounds.left + bounds.width - rect.width - 12,
+            bounds.top + (bounds.height - rect.height) / 2);
+        placeTriggerAt(btn, position.left, position.top);
+        return;
     }
 
-    // 清除保存的位置和拖动标记，避免下次加载时恢复错误位置
+    for (const property of ['left', 'top', 'right', 'bottom', 'transform']) {
+        btn.style.removeProperty(property);
+    }
+    if (mode === 'desktop-mode') {
+        btn.style.setProperty('right', '20%', 'important');
+        btn.style.setProperty('transform', 'translateY(-50%)', 'important');
+    }
+}
+
+window.resetMobileButtonPosition = function () {
+    const btn = getPhoneDocument().getElementById('mobile-trigger-btn');
+    if (!btn) return;
     localStorage.removeItem('mobile-trigger-btn-position');
     localStorage.removeItem('mobile-trigger-btn-user-dragged');
+    positionTriggerAtDefault(btn);
 };
 
 // ==================== 页面滑动功能 ====================
@@ -10812,8 +10748,7 @@ function cleanupMobilePhone() {
     // 移除触发按钮拖动事件监听
     $('#mobile-trigger-btn').off('click');
 
-    //  移除窗口resize监听
-    $(getPhoneDocument().defaultView).off('resize.mobilePhone');
+    removeTriggerViewportListeners();
     $(getPhoneDocument()).off('.dnfMobilePhone');
     getPhoneDocument().removeEventListener('click', window.handlePhoneLiveButtonClick, true);
     getPhoneDocument().removeEventListener('mousemove', pageSwipe.boundHandleMove);
@@ -10966,15 +10901,7 @@ if (typeof window !== 'undefined') {
         }
     };
 
-    window.resetMobileTriggerPosition = function () {
-        localStorage.removeItem('mobile-trigger-btn-position');
-        $('#mobile-trigger-btn').css({
-            left: 'auto',
-            top: 'auto',
-            right: '20px',
-            bottom: '20px'
-        });
-    };
+    window.resetMobileTriggerPosition = window.resetMobileButtonPosition;
 
     window.resetPanelMemory = function () {
         localStorage.removeItem('mobile-last-panel');
