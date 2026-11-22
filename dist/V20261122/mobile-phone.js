@@ -1,26 +1,31 @@
 // ==================== 手机界面状态栏 ====================
+// 酒馆在隐藏 iframe 内执行脚本，但它注入的 jQuery 将界面挂到宿主页面。
+function getPhoneDocument() {
+    return $('body')[0]?.ownerDocument || document;
+}
+
 // ==================== 加载 Font Awesome（安全方式）====================
 function loadFontAwesome() {
     // 按需异步加载 Font Awesome、RemixIcon 与 Rajdhani 数字字体（幂等，不阻塞渲染）
     if ($('link[href*="font-awesome"]').length === 0 && $('link[href*="fontawesome"]').length === 0) {
-        const faLink = document.createElement('link');
+        const faLink = getPhoneDocument().createElement('link');
         faLink.rel = 'stylesheet';
         faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
         faLink.crossOrigin = 'anonymous';
-        document.head.appendChild(faLink);
+        getPhoneDocument().head.appendChild(faLink);
     }
     if ($('link[href*="remixicon"]').length === 0) {
-        const riLink = document.createElement('link');
+        const riLink = getPhoneDocument().createElement('link');
         riLink.rel = 'stylesheet';
         riLink.href = 'https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css';
         riLink.crossOrigin = 'anonymous';
-        document.head.appendChild(riLink);
+        getPhoneDocument().head.appendChild(riLink);
     }
     if ($('link[href*="Rajdhani"]').length === 0) {
-        const fontLink = document.createElement('link');
+        const fontLink = getPhoneDocument().createElement('link');
         fontLink.rel = 'stylesheet';
         fontLink.href = 'https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap';
-        document.head.appendChild(fontLink);
+        getPhoneDocument().head.appendChild(fontLink);
     }
 }
 
@@ -2666,35 +2671,15 @@ function clamp(value, min, max) {
 }
 
 // 获取可靠的视口尺寸（支持 iframe 和各种环境）
-function getViewportSize() {
-    // 优先使用 visualViewport（更准确，支持缩放）
-    if (window.visualViewport) {
-        const vv = window.visualViewport;
-        if (vv.width > 0 && vv.height > 0) {
-            return { width: vv.width, height: vv.height };
-        }
+function getViewportSize(view = getPhoneDocument().defaultView || window) {
+    const viewport = view.visualViewport;
+    if (viewport?.width > 0 && viewport.height > 0) {
+        return { width: viewport.width, height: viewport.height };
     }
 
-    // 回退到 innerWidth/innerHeight
-    let w = window.innerWidth || document.documentElement.clientWidth || 0;
-    let h = window.innerHeight || document.documentElement.clientHeight || 0;
-
-    // iframe 中尝试父窗口
-    if ((w === 0 || h === 0) && window.parent !== window) {
-        try {
-            const pw = window.parent.innerWidth || window.parent.document.documentElement.clientWidth;
-            const ph = window.parent.innerHeight || window.parent.document.documentElement.clientHeight;
-            if (pw > 0) w = pw;
-            if (ph > 0) h = ph;
-        } catch (e) {
-            // 跨域无法访问父窗口
-        }
-    }
-
-    // 最终回退到默认值（避免返回 0）
     return {
-        width: w > 0 ? w : 800,
-        height: h > 0 ? h : 600
+        width: view.innerWidth || view.document.documentElement.clientWidth || 800,
+        height: view.innerHeight || view.document.documentElement.clientHeight || 600
     };
 }
 
@@ -2702,8 +2687,8 @@ function getViewportSize() {
 function constrainFullyInViewport(x, y, elementWidth, elementHeight) {
     const viewport = getViewportSize();
 
-    const boundedX = clamp(x, 0, viewport.width - elementWidth);
-    const boundedY = clamp(y, 0, viewport.height - elementHeight);
+    const boundedX = clamp(x, 0, Math.max(0, viewport.width - elementWidth));
+    const boundedY = clamp(y, 0, Math.max(0, viewport.height - elementHeight));
 
     return { x: boundedX, y: boundedY };
 }
@@ -3572,7 +3557,7 @@ function initializeMobilePhone() {
 
     try {
         // 在主文档上监听（用于论坛按钮的捕获阶段处理）
-        document.addEventListener('click', window.handlePhoneLiveButtonClick, true);
+        getPhoneDocument().addEventListener('click', window.handlePhoneLiveButtonClick, true);
 
         // 清理旧元素
         $('#mobile-trigger-btn').remove();
@@ -4130,7 +4115,7 @@ function bindPhoneEvents() {
     });
 
     // 壁纸分类展开/收起（使用事件委托）
-    $(document).on('click', '.wallpaper-category-header', function (e) {
+    $(getPhoneDocument()).on('click.dnfMobilePhone', '.wallpaper-category-header', function (e) {
         const categoryName = $(this).data('category');
         if (categoryName) {
             toggleWallpaperCategory(categoryName);
@@ -4138,32 +4123,32 @@ function bindPhoneEvents() {
     });
 
     // 论坛按钮点击（使用jQuery事件委托，和好友一样的方式）
-    $(document).on('click', '.phone-forum-generate-btn', function (e) {
+    $(getPhoneDocument()).on('click.dnfMobilePhone', '.phone-forum-generate-btn', function (e) {
         e.stopPropagation();
         e.preventDefault();
         window.phoneGenerateForum && window.phoneGenerateForum();
     });
 
-    $(document).on('click', '.phone-forum-settings-btn', function (e) {
+    $(getPhoneDocument()).on('click.dnfMobilePhone', '.phone-forum-settings-btn', function (e) {
         e.stopPropagation();
         e.preventDefault();
         window.phoneOpenForumSettings && window.phoneOpenForumSettings();
     });
 
-    $(document).on('click', '.phone-forum-save-settings-btn', function (e) {
+    $(getPhoneDocument()).on('click.dnfMobilePhone', '.phone-forum-save-settings-btn', function (e) {
         e.stopPropagation();
         e.preventDefault();
         window.phoneSaveForumSettings && window.phoneSaveForumSettings();
     });
 
-    $(document).on('click', '.phone-forum-close-settings-btn', function (e) {
+    $(getPhoneDocument()).on('click.dnfMobilePhone', '.phone-forum-close-settings-btn', function (e) {
         e.stopPropagation();
         e.preventDefault();
         window.phoneCloseForumSettings && window.phoneCloseForumSettings();
     });
 
     // 好友列表项点击（使用事件委托）
-    $(document).on('click', '.friend-item', function (e) {
+    $(getPhoneDocument()).on('click.dnfMobilePhone', '.friend-item', function (e) {
         e.stopPropagation();
         const $friendItem = $(this);
         const friendName = $friendItem.data('friend-name');
@@ -4186,7 +4171,7 @@ function bindPhoneEvents() {
     });
 
     // 论坛帖子点击（使用事件委托）
-    $(document).on('click', '.forum-post-item', function (e) {
+    $(getPhoneDocument()).on('click.dnfMobilePhone', '.forum-post-item', function (e) {
         e.stopPropagation();
         const $postItem = $(this);
         const postIndex = $postItem.data('post-index');
@@ -4264,7 +4249,7 @@ function bindPhoneEvents() {
     }
 
     // 备用：也监听整个分类容器的点击
-    $(document).on('click', '.list-item-header', function (e) {
+    $(getPhoneDocument()).on('click.dnfMobilePhone', '.list-item-header', function (e) {
         // 如果点击的是好友项，不处理
         if ($(this).closest('.friend-item').length > 0) {
             return;
@@ -4277,7 +4262,7 @@ function bindPhoneEvents() {
     });
 
     // 全局点击事件处理
-    $(document).on('click', function (e) {
+    $(getPhoneDocument()).on('click.dnfMobilePhone', function (e) {
         const $target = $(e.target);
 
         const inMobilePhone = $target.closest('#mobile-phone-overlay').length > 0;
@@ -4345,7 +4330,7 @@ function bindPhoneEvents() {
     });
 
     // 壁纸选择（使用事件委托，因为壁纸项是动态加载的）
-    $(document).on('click', '.wallpaper-item', function (e) {
+    $(getPhoneDocument()).on('click.dnfMobilePhone', '.wallpaper-item', function (e) {
         const wallpaperUrl = $(this).data('wallpaper-url');
         if (wallpaperUrl) {
             setWallpaper(wallpaperUrl);
@@ -4354,12 +4339,13 @@ function bindPhoneEvents() {
 
     //  窗口resize监听：响应式调整按钮位置，并确保元素不跑出屏幕
     let resizeTimer;
-    $(window).on('resize.mobilePhone', function () {
+    $(getPhoneDocument().defaultView).on('resize.mobilePhone', function () {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function () {
             const viewport = getViewportSize();
             const $btn = $('#mobile-trigger-btn');
             const btnElement = $btn[0];
+            if (!btnElement) return;
 
             //  检查用户是否手动拖动过
             const userDragged = localStorage.getItem('mobile-trigger-btn-user-dragged') === 'true';
@@ -4515,15 +4501,12 @@ function handleDragEnd(e) {
 }
 
 // 恢复按钮位置（添加重试次数限制）
-let restorePositionRetryCount = 0;
-const MAX_RESTORE_RETRIES = 5;
 
 function restoreTriggerBtnPosition() {
     try {
         const savedPosition = localStorage.getItem('mobile-trigger-btn-position');
 
         if (!savedPosition) {
-            restorePositionRetryCount = 0;
             return;
         }
 
@@ -4534,60 +4517,15 @@ function restoreTriggerBtnPosition() {
             pos.left < 0 || pos.top < 0 ||
             isNaN(pos.left) || isNaN(pos.top)) {
             localStorage.removeItem('mobile-trigger-btn-position');
-            restorePositionRetryCount = 0;
             return;
         }
 
         const $btn = $('#mobile-trigger-btn');
 
-        //  获取真实的视口宽度（支持DevTools设备模拟和srcdoc iframe）
-        let windowWidth = window.innerWidth || document.documentElement.clientWidth || $(window).width();
-        let windowHeight = window.innerHeight || document.documentElement.clientHeight || $(window).height();
-
-        //  在srcdoc iframe中，所有window尺寸都是0，必须使用父窗口尺寸
-        if (window.parent !== window) {
-            try {
-                // 使用父窗口的 innerWidth（支持DevTools设备模拟）
-                const parentWidth = window.parent.innerWidth || window.parent.document.documentElement.clientWidth || $(window.parent).width();
-                const parentHeight = window.parent.innerHeight || window.parent.document.documentElement.clientHeight || $(window.parent).height();
-
-                // 如果当前窗口尺寸为0（srcdoc iframe的情况），使用父窗口尺寸
-                if (windowWidth === 0 || windowHeight === 0) {
-                    windowWidth = parentWidth;
-                    windowHeight = parentHeight;
-                }
-            } catch (e) {
-                // 无法访问父窗口
-            }
-        }
+        const { width: windowWidth, height: windowHeight } = getViewportSize();
 
         const btnWidth = $btn.outerWidth();
         const btnHeight = $btn.outerHeight();
-
-        // 如果窗口尺寸还是0，检查是否超过最大重试次数
-        if (windowWidth === 0 || windowHeight === 0) {
-            restorePositionRetryCount++;
-
-            if (restorePositionRetryCount >= MAX_RESTORE_RETRIES) {
-                restorePositionRetryCount = 0;
-                // 使用默认位置
-                $btn.css({
-                    left: 'auto',
-                    top: 'auto',
-                    right: '20px',
-                    bottom: '20px'
-                });
-                return;
-            }
-
-            setTimeout(() => {
-                restoreTriggerBtnPosition();
-            }, 500);
-            return;
-        }
-
-        // 恢复成功，重置计数器
-        restorePositionRetryCount = 0;
 
         //  响应式位置检测：如果是小屏幕，使用默认位置
         const isSmallScreen = windowWidth <= 768;
@@ -4638,25 +4576,15 @@ function restoreTriggerBtnPosition() {
         });
     } catch (e) {
         localStorage.removeItem('mobile-trigger-btn-position');
-        restorePositionRetryCount = 0;
     }
 }
 
 // ==================== 手动调整按钮位置（调试用） ====================
 window.resetMobileButtonPosition = function () {
-    let windowWidth = window.innerWidth || document.documentElement.clientWidth || $(window).width();
-
-    //  srcdoc iframe中尺寸为0，使用父窗口尺寸
-    if ((windowWidth === 0) && window.parent !== window) {
-        try {
-            windowWidth = window.parent.innerWidth || window.parent.document.documentElement.clientWidth || $(window.parent).width();
-        } catch (e) {
-            // 无法访问父窗口
-        }
-    }
-
+    const { width: windowWidth } = getViewportSize();
     const $btn = $('#mobile-trigger-btn');
     const btnElement = $btn[0];
+    if (!btnElement) return;
 
     //  移除所有内联定位样式
     btnElement.style.removeProperty('left');
@@ -4713,8 +4641,8 @@ let pageSwipe = {
 
     init: function () {
         // 尝试从jQuery和原生DOM两种方式获取
-        let wrapper = document.getElementById('app-pages-wrapper');
-        let indicators = document.getElementById('page-indicators');
+        let wrapper = getPhoneDocument().getElementById('app-pages-wrapper');
+        let indicators = getPhoneDocument().getElementById('page-indicators');
 
         // 如果原生找不到，尝试jQuery
         if (!wrapper) {
@@ -4774,8 +4702,8 @@ let pageSwipe = {
 
         // 鼠标事件：在document上监听move和up，防止滑出区域
         if (e.type === 'mousedown') {
-            document.addEventListener('mousemove', this.boundHandleMove);
-            document.addEventListener('mouseup', this.boundHandleEnd);
+            getPhoneDocument().addEventListener('mousemove', this.boundHandleMove);
+            getPhoneDocument().addEventListener('mouseup', this.boundHandleEnd);
         }
     },
 
@@ -4816,8 +4744,8 @@ let pageSwipe = {
         this.isDragging = false;
 
         // 移除document上的事件监听器
-        document.removeEventListener('mousemove', this.boundHandleMove);
-        document.removeEventListener('mouseup', this.boundHandleEnd);
+        getPhoneDocument().removeEventListener('mousemove', this.boundHandleMove);
+        getPhoneDocument().removeEventListener('mouseup', this.boundHandleEnd);
 
         //  只有真正滑动过，才需要处理页面切换和设置标志
         if (this.hasMoved) {
@@ -5131,18 +5059,20 @@ function updatePhoneData(data) {
 }
 
 // ==================== 控制函数 ====================
-const phoneViewportMedia = window.matchMedia('(max-width: 768px), (hover: none) and (pointer: coarse)');
+const phoneViewportQuery = '(max-width: 768px), (hover: none) and (pointer: coarse)';
+let phoneViewportWindow = null;
 
 function syncPhoneViewport() {
-    const overlay = document.getElementById('mobile-phone-overlay');
+    const overlay = getPhoneDocument().getElementById('mobile-phone-overlay');
     if (!overlay?.classList.contains('active')) return;
 
-    const fitsViewport = phoneViewportMedia.matches;
+    const view = overlay.ownerDocument.defaultView;
+    const fitsViewport = view.matchMedia(phoneViewportQuery).matches;
     overlay.toggleAttribute('data-fit-viewport', fitsViewport);
     if (fitsViewport) {
-        const visualViewport = window.visualViewport;
+        const visualViewport = view.visualViewport;
         const viewport = visualViewport?.width > 0 && visualViewport.height > 0 ? visualViewport : null;
-        const { width, height } = getViewportSize();
+        const { width, height } = getViewportSize(view);
         overlay.style.setProperty('--dnf-phone-viewport-width', `${width}px`);
         overlay.style.setProperty('--dnf-phone-viewport-height', `${height}px`);
         overlay.style.setProperty('--dnf-phone-viewport-left', `${viewport?.offsetLeft || 0}px`);
@@ -5160,17 +5090,24 @@ function syncPhoneViewport() {
 }
 
 function removePhoneViewportListeners() {
-    window.removeEventListener('resize', syncPhoneViewport);
-    window.visualViewport?.removeEventListener('resize', syncPhoneViewport);
-    window.visualViewport?.removeEventListener('scroll', syncPhoneViewport);
+    if (!phoneViewportWindow) return;
+    phoneViewportWindow.removeEventListener('resize', syncPhoneViewport);
+    phoneViewportWindow.visualViewport?.removeEventListener('resize', syncPhoneViewport);
+    phoneViewportWindow.visualViewport?.removeEventListener('scroll', syncPhoneViewport);
+    phoneViewportWindow = null;
 }
 
 function openMobilePhone() {
-    $('#mobile-phone-overlay').addClass('active');
+    const overlay = getPhoneDocument().getElementById('mobile-phone-overlay');
+    if (!overlay) return;
+
+    removePhoneViewportListeners();
+    overlay.classList.add('active');
     syncPhoneViewport();
-    window.addEventListener('resize', syncPhoneViewport);
-    window.visualViewport?.addEventListener('resize', syncPhoneViewport);
-    window.visualViewport?.addEventListener('scroll', syncPhoneViewport);
+    phoneViewportWindow = overlay.ownerDocument.defaultView;
+    phoneViewportWindow.addEventListener('resize', syncPhoneViewport);
+    phoneViewportWindow.visualViewport?.addEventListener('resize', syncPhoneViewport);
+    phoneViewportWindow.visualViewport?.addEventListener('scroll', syncPhoneViewport);
 
     //  刷新MVU数据
     try {
@@ -5233,7 +5170,7 @@ function closeMobilePhone() {
         //  优先使用滚动监听器已保存的位置，因为DOM可能已经被修改
         // 只有在还没有保存位置时才从DOM读取
         if (friendDetailScrollPosition === 0) {
-            let scrollContainer = document.getElementById('friend-detail-scroll-container');
+            let scrollContainer = getPhoneDocument().getElementById('friend-detail-scroll-container');
             if (!scrollContainer) {
                 const $scrollContainer = $('#friend-detail-scroll-container');
                 if ($scrollContainer.length > 0) {
@@ -5541,7 +5478,7 @@ function openAppPanel(appName, isRestoringFromClose = false) {
                     //  恢复好友详情页的滚动位置
                     setTimeout(() => {
                         //  获取真正的滚动容器
-                        let scrollContainer = document.getElementById('friend-detail-scroll-container');
+                        let scrollContainer = getPhoneDocument().getElementById('friend-detail-scroll-container');
                         if (!scrollContainer) {
                             const $scrollContainer = $('#friend-detail-scroll-container');
                             if ($scrollContainer.length > 0) {
@@ -5566,7 +5503,7 @@ function openAppPanel(appName, isRestoringFromClose = false) {
             // 只有不恢复详情页时才单独恢复滚动位置
             if (friendsListScrollPosition > 0) {
                 setTimeout(() => {
-                    let appBodyElement = document.getElementById('phone-app-body');
+                    let appBodyElement = getPhoneDocument().getElementById('phone-app-body');
 
                     // 如果原生方式找不到，尝试使用 jQuery
                     if (!appBodyElement) {
@@ -5763,7 +5700,7 @@ function closeAppPanel() {
         //  恢复滚动位置（如果有保存）- 多种方式尝试，确保iframe兼容
         if (previousPage.scrollPosition !== undefined || lastViewedFriend) {
             setTimeout(() => {
-                let appBodyElement = document.getElementById('phone-app-body');
+                let appBodyElement = getPhoneDocument().getElementById('phone-app-body');
 
                 // 如果原生方式找不到，尝试使用 jQuery
                 if (!appBodyElement) {
@@ -8071,7 +8008,7 @@ function generateCGCharacterDetailPanel(characterName, data) {
 }
 
 function showCGCharacterDetail(characterName) {
-    const appBodyElement = document.getElementById('phone-app-body');
+    const appBodyElement = getPhoneDocument().getElementById('phone-app-body');
     navigationStack.push({
         title: $('#phone-app-title').text(),
         titleHtml: $('#phone-app-title').html(),
@@ -8216,7 +8153,7 @@ function showFriendDetail(friendName, friendData, isRestoring = false) {
     }
 
     //  保存好友列表的滚动位置（多种方式尝试，确保iframe兼容）
-    let appBodyElement = document.getElementById('phone-app-body');
+    let appBodyElement = getPhoneDocument().getElementById('phone-app-body');
 
     // 如果原生方式找不到，尝试使用 jQuery
     if (!appBodyElement) {
@@ -8374,7 +8311,7 @@ function showFriendDetail(friendName, friendData, isRestoring = false) {
 
     /* 添加滚动监听器 */
     setTimeout(() => {
-        let scrollContainer = document.getElementById('friend-detail-scroll-container');
+        let scrollContainer = getPhoneDocument().getElementById('friend-detail-scroll-container');
 
         if (!scrollContainer) {
             const $scrollContainer = $('#friend-detail-scroll-container');
@@ -10170,12 +10107,12 @@ function openCalendarFullscreen() {
     });
 
     // ESC键关闭
-    $(document).on('keydown.calendarFs', function (e) {
+    $(getPhoneDocument()).on('keydown.calendarFs', function (e) {
         if (e.key === 'Escape') {
             $('#calendar-fullscreen-viewer').fadeOut(200, function () {
                 $(this).remove();
             });
-            $(document).off('keydown.calendarFs');
+            $(getPhoneDocument()).off('keydown.calendarFs');
         }
     });
 }
@@ -10876,10 +10813,16 @@ function cleanupMobilePhone() {
     $('#mobile-trigger-btn').off('click');
 
     //  移除窗口resize监听
-    $(window).off('resize.mobilePhone');
+    $(getPhoneDocument().defaultView).off('resize.mobilePhone');
+    $(getPhoneDocument()).off('.dnfMobilePhone');
+    getPhoneDocument().removeEventListener('click', window.handlePhoneLiveButtonClick, true);
+    getPhoneDocument().removeEventListener('mousemove', pageSwipe.boundHandleMove);
+    getPhoneDocument().removeEventListener('mouseup', pageSwipe.boundHandleEnd);
+    pageSwipe.isDragging = false;
+    pageSwipe.initialized = false;
 
     // 移除手机界面拖动事件监听（原生事件）
-    const dragHandle = document.getElementById('phone-drag-handle');
+    const dragHandle = getPhoneDocument().getElementById('phone-drag-handle');
     if (dragHandle) {
         dragHandle.removeEventListener('pointerdown', handlePhoneDragStart);
         dragHandle.removeEventListener('pointermove', handlePhoneDragMove);
@@ -12019,9 +11962,7 @@ function showCustomConfirm(options = {}) {
         }
 
         //  计算弹窗宽度
-        const windowWidth = $(window).width();
-        const bodyWidth = $('body').width();
-        const containerWidth = windowWidth || bodyWidth || 400;
+        const { width: containerWidth } = getViewportSize();
         let modalWidth = Math.min(Math.max(containerWidth * 0.9, 300), 480);
         if (modalWidth < 300 || isNaN(modalWidth)) {
             modalWidth = 400;
@@ -12103,20 +12044,20 @@ function showCustomConfirm(options = {}) {
         // ESC键取消
         const handleEsc = (e) => {
             if (e.key === 'Escape') {
-                $(document).off('keydown', handleEsc);
+                $(getPhoneDocument()).off('keydown', handleEsc);
                 handleChoice(false);
             }
         };
-        $(document).on('keydown', handleEsc);
+        $(getPhoneDocument()).on('keydown', handleEsc);
 
         // Enter键确认
         const handleEnter = (e) => {
             if (e.key === 'Enter') {
-                $(document).off('keydown', handleEnter);
+                $(getPhoneDocument()).off('keydown', handleEnter);
                 handleChoice(true);
             }
         };
-        $(document).on('keydown', handleEnter);
+        $(getPhoneDocument()).on('keydown', handleEnter);
 
         // 自动聚焦确认按钮
         setTimeout(() => {
@@ -12160,7 +12101,7 @@ $(() => {
 });
 
 // ESC键关闭手机或全屏查看器
-$(document).on('keydown', function (e) {
+$(getPhoneDocument()).on('keydown.dnfMobilePhoneEscape', function (e) {
     if (e.key === 'Escape') {
         // 优先关闭全屏壁纸查看器
         const $viewer = $('#wallpaper-fullscreen-viewer');
@@ -12179,6 +12120,7 @@ $(document).on('keydown', function (e) {
 
 // 卸载时清理
 $(window).on('unload', () => {
+    $(getPhoneDocument()).off('keydown.dnfMobilePhoneEscape');
     cleanupMobilePhone();
 });
 
