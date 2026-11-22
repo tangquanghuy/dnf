@@ -2758,7 +2758,7 @@ ${lockedSkillsJson}
     const normalizedTheme = VALID_THEMES.has(theme) ? theme : "warm-white";
     const appearance = THEME_APPEARANCE[normalizedTheme] || THEME_APPEARANCE["warm-white"];
     const panelEl = document.getElementById(`${SCRIPT_ID}-panel`);
-    const appFrameEl = document.getElementById("app-frame");
+    const appFrameEl = panelEl?.querySelector(`#${SCRIPT_ID}-app-frame`);
     if (panelEl) {
       panelEl.setAttribute("data-theme", normalizedTheme);
       panelEl.style.setProperty("--status-card-brightness", appearance.brightness);
@@ -2876,7 +2876,11 @@ ${lockedSkillsJson}
         syncPanelTheme();
         panel.addClass("visible");
         state.current = "expanded";
-        refreshStatusBar();
+        try {
+          refreshStatusBar();
+        } catch (error) {
+          log.warn("打开面板时刷新数据失败", error);
+        }
         // 每次打开面板时检测并加载背景图片
         loadHeaderBackground();
       } else {
@@ -8164,7 +8168,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
   window[SCRIPT_ID + "_setTheme"] = (theme) => applyPanelTheme(theme);
   window[SCRIPT_ID + "_setAppearance"] = (appearance = {}) => {
     const panelEl = document.getElementById(`${SCRIPT_ID}-panel`);
-    const appFrameEl = document.getElementById("app-frame");
+    const appFrameEl = panelEl?.querySelector(`#${SCRIPT_ID}-app-frame`);
     const brightness = Number.isFinite(Number(appearance.brightness)) ? Number(appearance.brightness) : 1;
     const saturation = Number.isFinite(Number(appearance.saturation)) ? Number(appearance.saturation) : 1;
     if (panelEl) {
@@ -9739,7 +9743,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     transform: rotate(90deg);
 }
 /* ========== 以下完全复用原版状态栏.html的CSS ========== */
-#${SCRIPT_ID}-panel #app-frame {
+#${SCRIPT_ID}-panel #${SCRIPT_ID}-app-frame {
     --bg-color: #F4F5F7;
     --card-bg: #FFFFFF;
     --primary: #3B4259;
@@ -9762,12 +9766,12 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     --status-card-brightness: 0.86;
     --status-card-saturation: 0.94;
 }
-#${SCRIPT_ID}-panel #app-frame * {
+#${SCRIPT_ID}-panel #${SCRIPT_ID}-app-frame * {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
     text-shadow: none !important;
 }
-#${SCRIPT_ID}-panel #app-frame {
+#${SCRIPT_ID}-panel #${SCRIPT_ID}-app-frame {
     position: absolute;
     top: 0;
     left: 0;
@@ -9783,7 +9787,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     transition: background-color 0.28s ease, filter 0.28s ease;
 }
 @media (min-width: 600px) {
-    #${SCRIPT_ID}-panel #app-frame {
+    #${SCRIPT_ID}-panel #${SCRIPT_ID}-app-frame {
         position: relative;
         top: auto;
         left: auto;
@@ -15192,7 +15196,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
       </div>
       <div id="${SCRIPT_ID}-panel" style="backdrop-filter:none !important;-webkit-backdrop-filter:none !important;">
         <button class="close-btn" id="${SCRIPT_ID}-close" type="button" title="关闭状态面板" aria-label="关闭状态面板">✕</button>
-        <div id="app-frame" style="backdrop-filter:none !important;-webkit-backdrop-filter:none !important;isolation:isolate;">
+        <div id="${SCRIPT_ID}-app-frame" style="backdrop-filter:none !important;-webkit-backdrop-filter:none !important;isolation:isolate;">
           <header>
             <div class="header-card-glass">
               <!-- 右侧信息区 -->
@@ -15676,7 +15680,7 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
     // Tooltip 智能定位
     $(document).on('mouseenter', `#${SCRIPT_ID}-panel .buff-icon-item`, function () {
       const $this = $(this);
-      const $panel = $this.closest('#app-frame');
+      const $panel = $this.closest(`#${SCRIPT_ID}-app-frame`);
 
       if ($panel.length) {
         const itemRect = this.getBoundingClientRect();
@@ -15786,24 +15790,17 @@ ri-sword-line ri-shield-line ri-fire-fill ri-drop-fill ri-skull-line ri-ghost-2-
       else if (normalizedTabIndex === 3) $panel.find("#view-skills").addClass("active");
       else if (normalizedTabIndex === 4) $panel.find("#view-quests").addClass("active");
 
-      if (normalizedTabIndex === 1) {
-        // Switch to Traits Tab
-        updateTraitsPageUI();
-      }
-      if (normalizedTabIndex === 3) {
-        // Switch to Skills Tab
-        refreshStatusBar();
-      }
-      if (normalizedTabIndex === 4) {
-        // Switch to Quests Tab
-        refreshStatusBar();
+      _panelTabState.currentTabIndex = normalizedTabIndex;
+      try {
+        if (normalizedTabIndex === 1) updateTraitsPageUI();
+        if (normalizedTabIndex === 3 || normalizedTabIndex === 4) refreshStatusBar();
+      } catch (error) {
+        log.warn("切换面板标签时刷新数据失败", error);
       }
 
-      // 恢复目标tab的滚动位置
+      // 恢复目标 tab 的滚动位置
       const savedPos = _panelTabState.scrollPositions[normalizedTabIndex] || 0;
       $main.scrollTop(savedPos);
-
-      _panelTabState.currentTabIndex = normalizedTabIndex;
       return true;
     };
     window[SCRIPT_ID + "_openTab"] = (tabIndex) => openPanelTab(tabIndex);
