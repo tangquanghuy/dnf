@@ -13174,6 +13174,15 @@ ${CHARACTER_PROFILE_FORMAT_SAMPLE.trim()}
                 return;
               }
 
+              const statData = mvuData.stat_data;
+              const shouldSyncSan = cat === '生活' && key === '神话解读' &&
+                String(statData.系统配置?.世界观 || '').trim() === '诡秘地海';
+              const syncSan = shouldSyncSan ? (getCore().window.__dnfEarthseaSan__ || window.__dnfEarthseaSan__) : null;
+              if (shouldSyncSan && typeof syncSan !== 'function') {
+                throw new Error('地海理智计算尚未就绪，请确认辅助计算脚本已加载');
+              }
+              // 遗忘前结算旧上限，保留已生效的神话解读扣减。
+              if (shouldSyncSan) syncSan(statData);
               delete profCategory[key];
               await mvuState.mvu.replaceMvuData(mvuData, { type: 'message', message_id: 'latest' });
               _cachedData = null;
