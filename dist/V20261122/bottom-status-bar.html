@@ -13052,55 +13052,43 @@ ${CHARACTER_PROFILE_FORMAT_SAMPLE.trim()}
         // 快捷按钮 → 唤起状态栏面板
         document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
           btn.addEventListener('click', function () {
-            const tabIndex = parseInt(this.dataset.tab);
+            const tabIndex = Number(this.dataset.tab);
+            const activeViewId = ['view-dashboard', 'view-traits', 'view-inventory', 'view-skills', 'view-quests'][tabIndex];
+            if (!activeViewId) return;
+            const win = getParent();
+
             try {
-              const win = getParent();
-              const hasApi = typeof win.rpg_status_bar_setState === 'function';
-              const syncExternalStatusBarTheme = () => {
-                if (typeof win.rpg_status_bar_setTheme === 'function') {
-                  const appearance = getStatusBarThemeAppearance(_syncedTheme || resolveThemeFromContext());
-                  win.rpg_status_bar_setTheme(appearance.theme);
-                  if (typeof win.rpg_status_bar_setAppearance === 'function') {
-                    win.rpg_status_bar_setAppearance({
-                      brightness: appearance.brightness,
-                      saturation: appearance.saturation
-                    });
-                  }
-                }
-              };
-              const openExternalTab = () => {
-                syncExternalStatusBarTheme();
-                if (typeof win.rpg_status_bar_openTab === 'function') {
-                  win.rpg_status_bar_openTab(tabIndex);
-                  return;
-                }
-                const $ = win.jQuery || window.jQuery;
-                if (!$) return;
-                const $p = $(`#rpg_status_bar-panel`);
-                if (!$p.length) return;
-                if (!hasApi) $p.addClass('visible');
-                $p.find('.menu-item').removeClass('active');
-                $p.find(`.menu-item[data-tab="${tabIndex}"]`).addClass('active');
-                $p.find('.view-section').removeClass('active');
-                if (tabIndex === 0) $p.find('#view-dashboard').addClass('active');
-                else if (tabIndex === 1) $p.find('#view-traits').addClass('active');
-                else if (tabIndex === 2) $p.find('#view-inventory').addClass('active');
-                else if (tabIndex === 3) $p.find('#view-skills').addClass('active');
-                else if (tabIndex === 4) $p.find('#view-quests').addClass('active');
-              };
-              syncExternalStatusBarTheme();
-              if (hasApi) win.rpg_status_bar_setState('expanded');
-              openExternalTab();
-              if (typeof win.rpg_status_bar_refresh === 'function') {
-                win.rpg_status_bar_refresh();
-                setTimeout(() => {
-                  try {
-                    win.rpg_status_bar_refresh();
-                    openExternalTab();
-                  } catch (e) { }
-                }, 120);
+              if (typeof win.rpg_status_bar_setTheme === 'function') {
+                const { theme, brightness, saturation } = getStatusBarThemeAppearance(_syncedTheme || resolveThemeFromContext());
+                win.rpg_status_bar_setTheme(theme);
+                win.rpg_status_bar_setAppearance?.({ brightness, saturation });
               }
-            } catch (e) { }
+            } catch (error) {
+              console.warn('[底部状态栏] 同步外置面板主题失败', error);
+            }
+
+            try {
+              win.rpg_status_bar_setState?.('expanded');
+            } catch (error) {
+              console.warn('[底部状态栏] 展开外置面板失败', error);
+            }
+
+            try {
+              if (typeof win.rpg_status_bar_openTab === 'function' && win.rpg_status_bar_openTab(tabIndex) !== false) return;
+            } catch (error) {
+              console.warn('[底部状态栏] 调用外置面板切页失败', error);
+            }
+
+            // 兼容未提供切页接口的旧版外置状态栏。
+            const panel = win.document.getElementById('rpg_status_bar-panel');
+            if (!panel) return;
+            panel.classList.add('visible');
+            panel.querySelectorAll('.menu-item[data-tab]').forEach(item => {
+              item.classList.toggle('active', Number(item.dataset.tab) === tabIndex);
+            });
+            panel.querySelectorAll('.view-section').forEach(view => {
+              view.classList.toggle('active', view.id === activeViewId);
+            });
           });
         });
         // Tab 切换
